@@ -26,14 +26,15 @@ class _HistoryPageState extends State<HistoryPage> {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Historial Clínico Offline'),
+        title: const Text('Historial Clínico'),
         actions: [
           IconButton(
-            icon: const Icon(Icons.sync_rounded),
+            icon: const Icon(Icons.cloud_sync_outlined),
             tooltip: 'Sincronizar con servidor central',
             onPressed: () {
               ScaffoldMessenger.of(context).showSnackBar(
                 const SnackBar(
+                  behavior: SnackBarBehavior.floating,
                   content: Text('Comprobando conectividad... Registros almacenados de forma segura en SQLite.'),
                 ),
               );
@@ -45,73 +46,79 @@ class _HistoryPageState extends State<HistoryPage> {
         onRefresh: () => provider.loadHistory(),
         child: history.isEmpty
             ? Center(
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Icon(Icons.inventory_2_outlined, size: 64, color: AppColors.textMuted.withValues(alpha: 0.5)),
-                    const SizedBox(height: 16),
-                    const Text(
-                      'No hay evaluaciones registradas aún',
-                      style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
-                        color: AppColors.textSecondary,
+                child: Padding(
+                  padding: const EdgeInsets.all(32),
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(20),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFF1F5F9),
+                          shape: BoxShape.circle,
+                        ),
+                        child: const Icon(Icons.assignment_outlined, size: 48, color: AppColors.textMuted),
                       ),
-                    ),
-                    const SizedBox(height: 8),
-                    const Text(
-                      'Realiza un triage desde el formulario para almacenar registros locales.',
-                      style: TextStyle(fontSize: 12, color: AppColors.textMuted),
-                    ),
-                  ],
+                      const SizedBox(height: 16),
+                      const Text(
+                        'Sin consultas registradas',
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w700,
+                          color: AppColors.textPrimary,
+                        ),
+                      ),
+                      const SizedBox(height: 6),
+                      const Text(
+                        'Las evaluaciones que guardes offline en el triage aparecerán aquí.',
+                        textAlign: TextAlign.center,
+                        style: TextStyle(fontSize: 12, color: AppColors.textSecondary),
+                      ),
+                    ],
+                  ),
                 ),
               )
             : ListView(
-                padding: const EdgeInsets.all(16),
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
                 children: [
-                  // Sync status header
+                  // Banner de Sincronización
                   Container(
                     padding: const EdgeInsets.all(14),
                     decoration: BoxDecoration(
                       color: AppColors.surface,
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: AppColors.border),
+                      borderRadius: BorderRadius.circular(14),
+                      border: Border.all(color: const Color(0xFFE2E8F0)),
                     ),
                     child: Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              '${history.length} Evaluaciones en memoria local',
-                              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
-                            ),
-                            const SizedBox(height: 4),
-                            Text(
-                              '${provider.unsyncedCount} pendientes de sincronización central',
-                              style: const TextStyle(fontSize: 11, color: AppColors.secondary),
-                            ),
-                          ],
-                        ),
                         Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                          padding: const EdgeInsets.all(8),
                           decoration: BoxDecoration(
                             color: const Color(0xFFFEF3C7),
                             borderRadius: BorderRadius.circular(8),
                           ),
-                          child: Row(
-                            children: const [
-                              Icon(Icons.cloud_queue_rounded, size: 16, color: AppColors.secondary),
-                              SizedBox(width: 4),
-                              Text('Offline', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: AppColors.secondary)),
+                          child: const Icon(Icons.cloud_off_rounded, size: 18, color: AppColors.secondary),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                '${history.length} consultas en SQLite local',
+                                style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13),
+                              ),
+                              Text(
+                                '${provider.unsyncedCount} pendientes de sincronización',
+                                style: const TextStyle(fontSize: 11, color: AppColors.textSecondary),
+                              ),
                             ],
                           ),
                         ),
                       ],
                     ),
                   ),
-                  const SizedBox(height: 16),
+                  const SizedBox(height: 14),
 
                   ...history.map((record) => _buildRecordCard(record)),
                 ],
@@ -125,18 +132,22 @@ class _HistoryPageState extends State<HistoryPage> {
     final hasEmergency = (record['alerta_clinica_inmediata'] as int? ?? 0) == 1;
 
     Color badgeColor = AppColors.riskLow;
+    Color badgeBg = const Color(0xFFDCFCE7);
     if (hasEmergency) {
       badgeColor = AppColors.emergencyRed;
+      badgeBg = const Color(0xFFFEE2E2);
     } else if (riesgo.contains('Alto')) {
       badgeColor = AppColors.riskHigh;
+      badgeBg = const Color(0xFFFEE2E2);
     } else if (riesgo.contains('Medio') || riesgo.contains('Moderado')) {
       badgeColor = AppColors.riskMedium;
+      badgeBg = const Color(0xFFFEF3C7);
     }
 
     final fecha = record['fecha_evaluacion']?.toString().split('T').first ?? '';
 
     return Card(
-      margin: const EdgeInsets.only(bottom: 12),
+      margin: const EdgeInsets.only(bottom: 10),
       child: Padding(
         padding: const EdgeInsets.all(14),
         child: Column(
@@ -147,38 +158,41 @@ class _HistoryPageState extends State<HistoryPage> {
               children: [
                 Row(
                   children: [
-                    const Icon(Icons.person_pin_outlined, color: AppColors.primary, size: 20),
-                    const SizedBox(width: 8),
+                    const Icon(Icons.person_outline_rounded, color: AppColors.primary, size: 18),
+                    const SizedBox(width: 6),
                     Text(
                       record['patient_id'] ?? 'Sin ID',
-                      style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+                      style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 14),
                     ),
                   ],
                 ),
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                   decoration: BoxDecoration(
-                    color: badgeColor.withValues(alpha: 0.12),
+                    color: badgeBg,
                     borderRadius: BorderRadius.circular(6),
                   ),
                   child: Text(
                     hasEmergency ? 'CÓDIGO ROJO' : riesgo,
                     style: TextStyle(
                       fontSize: 11,
-                      fontWeight: FontWeight.bold,
+                      fontWeight: FontWeight.w700,
                       color: badgeColor,
                     ),
                   ),
                 ),
               ],
             ),
-            const Divider(height: 16),
+            const Divider(height: 14, color: Color(0xFFF1F5F9)),
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Text(
-                  '${record['etnia']} • ${record['municipio']} (${record['zona']})',
-                  style: const TextStyle(fontSize: 12, color: AppColors.textSecondary),
+                Expanded(
+                  child: Text(
+                    '${record['etnia']} • ${record['municipio']}',
+                    style: const TextStyle(fontSize: 12, color: AppColors.textSecondary),
+                    overflow: TextOverflow.ellipsis,
+                  ),
                 ),
                 Text(
                   fecha,
@@ -186,15 +200,14 @@ class _HistoryPageState extends State<HistoryPage> {
                 ),
               ],
             ),
-            const SizedBox(height: 6),
-            Row(
+            const SizedBox(height: 8),
+            Wrap(
+              spacing: 6,
+              runSpacing: 6,
               children: [
                 _buildMetricPill('PA', '${record['presion_sistolica']?.toInt()}/${record['presion_diastolica']?.toInt()}'),
-                const SizedBox(width: 8),
                 _buildMetricPill('Hb', '${record['hemoglobina']} g/dL'),
-                const SizedBox(width: 8),
                 _buildMetricPill('Sem', '${record['semanas_gestacion']} sem'),
-                const SizedBox(width: 8),
                 _buildMetricPill('Dist', '${record['distancia_km']} km'),
               ],
             ),
@@ -202,7 +215,7 @@ class _HistoryPageState extends State<HistoryPage> {
               const SizedBox(height: 8),
               Text(
                 'Alerta: ${record['descripcion_alerta']}',
-                style: const TextStyle(fontSize: 11, color: AppColors.emergencyRed, fontWeight: FontWeight.w500),
+                style: const TextStyle(fontSize: 11, color: AppColors.emergencyRed, fontWeight: FontWeight.w600),
                 maxLines: 2,
                 overflow: TextOverflow.ellipsis,
               ),
@@ -215,14 +228,14 @@ class _HistoryPageState extends State<HistoryPage> {
 
   Widget _buildMetricPill(String title, String val) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+      padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
       decoration: BoxDecoration(
-        color: AppColors.surfaceVariant,
-        borderRadius: BorderRadius.circular(4),
+        color: const Color(0xFFF1F5F9),
+        borderRadius: BorderRadius.circular(6),
       ),
       child: Text(
         '$title: $val',
-        style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w500, color: AppColors.textPrimary),
+        style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: AppColors.textPrimary),
       ),
     );
   }

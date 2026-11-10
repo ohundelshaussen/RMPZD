@@ -74,7 +74,7 @@ class AcademicDashboardPage extends StatelessWidget {
                 ),
               ],
             ),
-            const SizedBox(width: 10),
+            const SizedBox(height: 10),
             Row(
               children: [
                 Expanded(

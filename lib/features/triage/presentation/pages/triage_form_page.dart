@@ -162,6 +162,20 @@ class _TriageFormPageState extends State<TriageFormPage> {
         _afiliacion = 'Subsidiado';
       }
     });
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        behavior: SnackBarBehavior.floating,
+        duration: const Duration(seconds: 2),
+        content: Text(
+          presetType == 1
+              ? 'Caso 1 cargado: Gestante Estable (Bajo Riesgo)'
+              : presetType == 2
+                  ? 'Caso 2 cargado: Emergencia Hipertensiva Wayuu'
+                  : 'Caso 3 cargado: Riesgo Moderado en Serranía',
+        ),
+      ),
+    );
   }
 
   void _submitForm() async {
@@ -204,11 +218,38 @@ class _TriageFormPageState extends State<TriageFormPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Triage Materno Comunitario'),
+        title: const Text('Triage Materno'),
         actions: [
+          // Offline Status indicator
+          Container(
+            margin: const EdgeInsets.symmetric(vertical: 12),
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+            decoration: BoxDecoration(
+              color: AppColors.primary.withValues(alpha: 0.1),
+              borderRadius: BorderRadius.circular(20),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: const [
+                Icon(Icons.bolt_rounded, size: 14, color: AppColors.primary),
+                SizedBox(width: 4),
+                Text(
+                  'Offline IA',
+                  style: TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w700,
+                    color: AppColors.primary,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(width: 8),
+
+          // Preset Selector Menu
           PopupMenuButton<int>(
-            icon: const Icon(Icons.flash_on_outlined, color: AppColors.primary),
-            tooltip: 'Cargar casos de prueba para demostración',
+            icon: const Icon(Icons.tune_rounded, color: AppColors.textPrimary),
+            tooltip: 'Cargar casos para demostración',
             onSelected: _loadPreset,
             itemBuilder: (context) => [
               const PopupMenuItem(
@@ -225,56 +266,29 @@ class _TriageFormPageState extends State<TriageFormPage> {
               ),
             ],
           ),
+          const SizedBox(width: 8),
         ],
       ),
       body: SingleChildScrollView(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
         child: Form(
           key: _formKey,
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              // Banner Offline
-              Container(
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: AppColors.primaryLight.withValues(alpha: 0.12),
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: AppColors.primaryLight.withValues(alpha: 0.3)),
-                ),
-                child: Row(
-                  children: const [
-                    Icon(Icons.wifi_off_rounded, color: AppColors.primary, size: 20),
-                    SizedBox(width: 10),
-                    Expanded(
-                      child: Text(
-                        'Modo Offline Activo: Inferencia local en el dispositivo sin necesidad de conexión.',
-                        style: TextStyle(
-                          fontSize: 12,
-                          color: AppColors.primaryDark,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 16),
-
-              // Sección 1: Datos Sociodemográficos y Territoriales
-              _buildSectionHeader(
-                icon: Icons.location_on_outlined,
-                title: 'Territorio y Enfoque Diferencial',
-              ),
-              const SizedBox(height: 10),
+              // Sección 1: Territorio y Población
+              _buildSectionHeader('Territorio y Enfoque Diferencial'),
               Card(
                 child: Padding(
-                  padding: const EdgeInsets.all(14),
+                  padding: const EdgeInsets.all(16),
                   child: Column(
                     children: [
                       TextFormField(
                         controller: _idController,
-                        decoration: const InputDecoration(labelText: 'Código / ID Paciente'),
+                        decoration: const InputDecoration(
+                          labelText: 'Identificador / ID de Gestante',
+                          prefixIcon: Icon(Icons.badge_outlined, size: 20),
+                        ),
                         validator: (v) => v!.isEmpty ? 'Requerido' : null,
                       ),
                       const SizedBox(height: 12),
@@ -282,9 +296,13 @@ class _TriageFormPageState extends State<TriageFormPage> {
                         children: [
                           Expanded(
                             child: DropdownButtonFormField<String>(
-                              value: _departamento,
+                              key: ValueKey('depto_$_departamento'),
+                              initialValue: _departamento,
+                              isExpanded: true,
                               decoration: const InputDecoration(labelText: 'Departamento'),
-                              items: _departamentos.map((d) => DropdownMenuItem(value: d, child: Text(d))).toList(),
+                              items: _departamentos
+                                  .map((d) => DropdownMenuItem(value: d, child: Text(d, overflow: TextOverflow.ellipsis)))
+                                  .toList(),
                               onChanged: (val) {
                                 setState(() {
                                   _departamento = val!;
@@ -296,7 +314,9 @@ class _TriageFormPageState extends State<TriageFormPage> {
                           const SizedBox(width: 12),
                           Expanded(
                             child: DropdownButtonFormField<String>(
-                              value: _municipio,
+                              key: ValueKey('muni_$_municipio'),
+                              initialValue: _municipio,
+                              isExpanded: true,
                               decoration: const InputDecoration(labelText: 'Municipio'),
                               items: _municipiosPorDepto[_departamento]!
                                   .map((m) => DropdownMenuItem(value: m, child: Text(m, overflow: TextOverflow.ellipsis)))
@@ -311,18 +331,25 @@ class _TriageFormPageState extends State<TriageFormPage> {
                         children: [
                           Expanded(
                             child: DropdownButtonFormField<String>(
-                              value: _etnia,
+                              key: ValueKey('etnia_$_etnia'),
+                              initialValue: _etnia,
+                              isExpanded: true,
                               decoration: const InputDecoration(labelText: 'Etnia'),
-                              items: _etnias.map((e) => DropdownMenuItem(value: e, child: Text(e))).toList(),
+                              items: _etnias
+                                  .map((e) => DropdownMenuItem(value: e, child: Text(e, overflow: TextOverflow.ellipsis)))
+                                  .toList(),
                               onChanged: (val) => setState(() => _etnia = val!),
                             ),
                           ),
                           const SizedBox(width: 12),
                           Expanded(
                             child: DropdownButtonFormField<String>(
-                              value: _zona,
+                              key: ValueKey('zona_$_zona'),
+                              initialValue: _zona,
+                              isExpanded: true,
                               decoration: const InputDecoration(labelText: 'Zona'),
-                              items: _zonas.map((z) => DropdownMenuItem(value: z, child: Text(z, overflow: TextOverflow.ellipsis)))
+                              items: _zonas
+                                  .map((z) => DropdownMenuItem(value: z, child: Text(z, overflow: TextOverflow.ellipsis)))
                                   .toList(),
                               onChanged: (val) => setState(() => _zona = val!),
                             ),
@@ -331,9 +358,13 @@ class _TriageFormPageState extends State<TriageFormPage> {
                       ),
                       const SizedBox(height: 12),
                       DropdownButtonFormField<String>(
-                        value: _afiliacion,
-                        decoration: const InputDecoration(labelText: 'Afiliación al Sistema de Salud (SGSSS)'),
-                        items: _afiliaciones.map((a) => DropdownMenuItem(value: a, child: Text(a))).toList(),
+                        key: ValueKey('afiliacion_$_afiliacion'),
+                        initialValue: _afiliacion,
+                        isExpanded: true,
+                        decoration: const InputDecoration(labelText: 'Régimen de Salud (SGSSS)'),
+                        items: _afiliaciones
+                            .map((a) => DropdownMenuItem(value: a, child: Text(a, overflow: TextOverflow.ellipsis)))
+                            .toList(),
                         onChanged: (val) => setState(() => _afiliacion = val!),
                       ),
                     ],
@@ -342,15 +373,11 @@ class _TriageFormPageState extends State<TriageFormPage> {
               ),
               const SizedBox(height: 16),
 
-              // Sección 2: Signos Vitales y Parámetros Fisiológicos
-              _buildSectionHeader(
-                icon: Icons.monitor_heart_outlined,
-                title: 'Signos Vitales y Laboratorio',
-              ),
-              const SizedBox(height: 10),
+              // Sección 2: Signos Vitales y Laboratorio
+              _buildSectionHeader('Signos Vitales y Laboratorio'),
               Card(
                 child: Padding(
-                  padding: const EdgeInsets.all(14),
+                  padding: const EdgeInsets.all(16),
                   child: Column(
                     children: [
                       Row(
@@ -414,15 +441,11 @@ class _TriageFormPageState extends State<TriageFormPage> {
               ),
               const SizedBox(height: 16),
 
-              // Sección 3: Datos Gestacionales y Acceso Logístico
-              _buildSectionHeader(
-                icon: Icons.alt_route_outlined,
-                title: 'Gestación y Distancia al Puesto de Salud',
-              ),
-              const SizedBox(height: 10),
+              // Sección 3: Datos de Gestación y Acceso
+              _buildSectionHeader('Gestación y Acceso al Servicio'),
               Card(
                 child: Padding(
-                  padding: const EdgeInsets.all(14),
+                  padding: const EdgeInsets.all(16),
                   child: Column(
                     children: [
                       Row(
@@ -431,7 +454,10 @@ class _TriageFormPageState extends State<TriageFormPage> {
                             child: TextFormField(
                               controller: _edadController,
                               keyboardType: TextInputType.number,
-                              decoration: const InputDecoration(labelText: 'Edad Materna'),
+                              decoration: const InputDecoration(
+                                labelText: 'Edad Materna',
+                                suffixText: 'años',
+                              ),
                               validator: (v) => v!.isEmpty ? 'Requerido' : null,
                             ),
                           ),
@@ -440,16 +466,10 @@ class _TriageFormPageState extends State<TriageFormPage> {
                             child: TextFormField(
                               controller: _semanasController,
                               keyboardType: TextInputType.number,
-                              decoration: const InputDecoration(labelText: 'Semanas Gest.'),
-                              validator: (v) => v!.isEmpty ? 'Requerido' : null,
-                            ),
-                          ),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            child: TextFormField(
-                              controller: _controlesController,
-                              keyboardType: TextInputType.number,
-                              decoration: const InputDecoration(labelText: 'Controles'),
+                              decoration: const InputDecoration(
+                                labelText: 'Semanas Gest.',
+                                suffixText: 'sem',
+                              ),
                               validator: (v) => v!.isEmpty ? 'Requerido' : null,
                             ),
                           ),
@@ -460,11 +480,10 @@ class _TriageFormPageState extends State<TriageFormPage> {
                         children: [
                           Expanded(
                             child: TextFormField(
-                              controller: _distanciaController,
+                              controller: _controlesController,
                               keyboardType: TextInputType.number,
                               decoration: const InputDecoration(
-                                labelText: 'Distancia',
-                                suffixText: 'km',
+                                labelText: 'Controles Realizados',
                               ),
                               validator: (v) => v!.isEmpty ? 'Requerido' : null,
                             ),
@@ -472,16 +491,26 @@ class _TriageFormPageState extends State<TriageFormPage> {
                           const SizedBox(width: 12),
                           Expanded(
                             child: TextFormField(
-                              controller: _tiempoController,
+                              controller: _distanciaController,
                               keyboardType: TextInputType.number,
                               decoration: const InputDecoration(
-                                labelText: 'Tiempo traslado',
-                                suffixText: 'horas',
+                                labelText: 'Distancia Centro',
+                                suffixText: 'km',
                               ),
                               validator: (v) => v!.isEmpty ? 'Requerido' : null,
                             ),
                           ),
                         ],
+                      ),
+                      const SizedBox(height: 12),
+                      TextFormField(
+                        controller: _tiempoController,
+                        keyboardType: TextInputType.number,
+                        decoration: const InputDecoration(
+                          labelText: 'Tiempo Estimado de Traslado',
+                          suffixText: 'horas',
+                        ),
+                        validator: (v) => v!.isEmpty ? 'Requerido' : null,
                       ),
                     ],
                   ),
@@ -489,39 +518,29 @@ class _TriageFormPageState extends State<TriageFormPage> {
               ),
               const SizedBox(height: 16),
 
-              // Sección 4: Antecedentes Gineco-Obstétricos
-              _buildSectionHeader(
-                icon: Icons.history_outlined,
-                title: 'Antecedentes Clínicos',
-              ),
-              const SizedBox(height: 10),
+              // Sección 4: Antecedentes Clínicos
+              _buildSectionHeader('Antecedentes Clínicos'),
               Card(
                 child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                   child: Column(
                     children: [
-                      SwitchListTile.adaptive(
-                        contentPadding: EdgeInsets.zero,
-                        title: const Text('Antecedente de Preeclampsia', style: TextStyle(fontSize: 14)),
+                      _buildSwitchRow(
+                        title: 'Antecedente de Preeclampsia',
                         value: _antecedentePreeclampsia,
-                        activeThumbColor: AppColors.primary,
-                        onChanged: (val) => setState(() => _antecedentePreeclampsia = val),
+                        onChanged: (v) => setState(() => _antecedentePreeclampsia = v),
                       ),
-                      const Divider(height: 1),
-                      SwitchListTile.adaptive(
-                        contentPadding: EdgeInsets.zero,
-                        title: const Text('Antecedente Diabetes Gestacional', style: TextStyle(fontSize: 14)),
+                      const Divider(height: 1, color: Color(0xFFF1F5F9)),
+                      _buildSwitchRow(
+                        title: 'Antecedente de Diabetes Gestacional',
                         value: _antecedenteDiabetes,
-                        activeThumbColor: AppColors.primary,
-                        onChanged: (val) => setState(() => _antecedenteDiabetes = val),
+                        onChanged: (v) => setState(() => _antecedenteDiabetes = v),
                       ),
-                      const Divider(height: 1),
-                      SwitchListTile.adaptive(
-                        contentPadding: EdgeInsets.zero,
-                        title: const Text('Parto Institucional Previo', style: TextStyle(fontSize: 14)),
+                      const Divider(height: 1, color: Color(0xFFF1F5F9)),
+                      _buildSwitchRow(
+                        title: 'Parto Institucional Previo',
                         value: _partoInstitucionalPrevio,
-                        activeThumbColor: AppColors.primary,
-                        onChanged: (val) => setState(() => _partoInstitucionalPrevio = val),
+                        onChanged: (v) => setState(() => _partoInstitucionalPrevio = v),
                       ),
                     ],
                   ),
@@ -535,13 +554,13 @@ class _TriageFormPageState extends State<TriageFormPage> {
                   return ElevatedButton.icon(
                     icon: provider.isLoading
                         ? const SizedBox(
-                            width: 20,
-                            height: 20,
+                            width: 18,
+                            height: 18,
                             child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
                           )
-                        : const Icon(Icons.analytics_outlined),
+                        : const Icon(Icons.health_and_safety_rounded, size: 20),
                     label: Text(
-                      provider.isLoading ? 'Evaluando en dispositivo...' : 'EVALUAR RIESGO OBSTÉTRICO',
+                      provider.isLoading ? 'Evaluando...' : 'EVALUAR RIESGO OBSTÉTRICO',
                     ),
                     onPressed: provider.isLoading ? null : _submitForm,
                   );
@@ -555,20 +574,48 @@ class _TriageFormPageState extends State<TriageFormPage> {
     );
   }
 
-  Widget _buildSectionHeader({required IconData icon, required String title}) {
-    return Row(
-      children: [
-        Icon(icon, size: 18, color: AppColors.primary),
-        const SizedBox(width: 8),
-        Text(
-          title,
-          style: const TextStyle(
-            fontSize: 14,
-            fontWeight: FontWeight.bold,
-            color: AppColors.textPrimary,
-          ),
+  Widget _buildSectionHeader(String title) {
+    return Padding(
+      padding: const EdgeInsets.only(left: 4, bottom: 8),
+      child: Text(
+        title,
+        style: const TextStyle(
+          fontSize: 13,
+          fontWeight: FontWeight.w700,
+          color: AppColors.textSecondary,
+          letterSpacing: 0.2,
         ),
-      ],
+      ),
+    );
+  }
+
+  Widget _buildSwitchRow({
+    required String title,
+    required bool value,
+    required ValueChanged<bool> onChanged,
+  }) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 8),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Expanded(
+            child: Text(
+              title,
+              style: const TextStyle(
+                fontSize: 13,
+                fontWeight: FontWeight.w500,
+                color: AppColors.textPrimary,
+              ),
+            ),
+          ),
+          Switch.adaptive(
+            value: value,
+            activeTrackColor: AppColors.primary,
+            onChanged: onChanged,
+          ),
+        ],
+      ),
     );
   }
 }
