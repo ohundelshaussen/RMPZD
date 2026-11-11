@@ -1,36 +1,36 @@
 import '../../../../core/database/database_helper.dart';
-import '../../domain/entities/patient_assessment.dart';
-import '../../domain/entities/triage_result.dart';
+import '../../domain/entities/assessment_record.dart';
+import '../models/assessment_model.dart';
 
 class AssessmentLocalDataSource {
   final DatabaseHelper dbHelper;
 
-  AssessmentLocalDataSource({DatabaseHelper? dbHelper})
-      : dbHelper = dbHelper ?? DatabaseHelper.instance;
+  AssessmentLocalDataSource({required this.dbHelper});
 
-  Future<int> insertAssessment({
-    required PatientAssessment patient,
-    required TriageResult result,
-  }) async {
+  Future<AssessmentModel> insertAssessment(AssessmentModel assessment) async {
     final db = await dbHelper.database;
-    final row = patient.toMap();
-    
-    // Add triage result fields
-    row['nivel_riesgo_predicho'] = result.riskLabel;
-    row['probabilidad_riesgo_alto'] = result.probAlto;
-    row['alerta_clinica_inmediata'] = result.hasImmediateEmergency ? 1 : 0;
-    row['descripcion_alerta'] = result.clinicalAlerts.isNotEmpty
-        ? result.clinicalAlerts.map((a) => a.title).join(' | ')
-        : null;
-    row['probabilidad_desenlace_adverso'] = result.probDesenlaceAdverso;
-    row['sincronizado'] = 0;
-
-    return await db.insert('assessments', row);
+    final idLocal = await db.insert('assessments', assessment.toMap());
+    final record = assessment.record;
+    return AssessmentModel(
+      record: AssessmentRecord(
+        patient: record.patient,
+        result: record.result,
+        idLocal: idLocal,
+        fechaGuardado: record.fechaGuardado,
+        sincronizado: record.sincronizado,
+      ),
+    );
   }
 
-  Future<List<Map<String, dynamic>>> getAssessments() async {
+  Future<List<AssessmentModel>> getAssessments() async {
     final db = await dbHelper.database;
-    return await db.query('assessments', orderBy: 'fecha_evaluacion DESC');
+    final rows = await db.query(
+      'assessments',
+      orderBy: 'fecha_evaluacion DESC',
+    );
+    return rows
+        .map((row) => AssessmentModel.fromMap(Map<String, dynamic>.from(row)))
+        .toList();
   }
 
   Future<int> getUnsyncedCount() async {

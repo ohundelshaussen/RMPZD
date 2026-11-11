@@ -58,7 +58,7 @@ lib/
 ## 🚀 Instrucciones de Ejecución
 
 ### Requisitos:
-* Flutter SDK (versión 3.47 o superior)
+* Flutter SDK (versión 3.44 o superior)
 * Dart SDK
 
 ### Pasos:

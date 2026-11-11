@@ -1,47 +1,57 @@
 import 'dart:convert';
 import 'dart:math' as math;
 import 'package:flutter/services.dart' show rootBundle;
+import '../../domain/entities/ai_prediction.dart';
 import '../../domain/entities/patient_assessment.dart';
 import '../../domain/entities/triage_result.dart';
 
 class AiInferenceEngine {
   Map<String, dynamic>? _params;
+  Map<String, double>? _numericMeans;
+  Map<String, double>? _numericScales;
   bool _isLoaded = false;
 
   Future<void> initialize() async {
     if (_isLoaded) return;
     try {
-      final jsonString =
-          await rootBundle.loadString('assets/models/model_parameters.json');
-      _params = json.decode(jsonString) as Map<String, dynamic>;
+      final jsonString = await rootBundle.loadString(
+        'assets/models/model_parameters.json',
+      );
+      final params = json.decode(jsonString) as Map<String, dynamic>;
+      final numericMeans = _toDoubleMap(params['numeric_scaler_means'] as Map);
+      final numericScales = _toDoubleMap(
+        params['numeric_scaler_scales'] as Map,
+      );
+
+      _params = params;
+      _numericMeans = numericMeans;
+      _numericScales = numericScales;
       _isLoaded = true;
-    } catch (e) {
-      // In tests or if asset loading fails, parameters can be loaded synchronously
-      _isLoaded = false;
+    } catch (error) {
+      throw StateError(
+        'No se pudieron cargar los parámetros del modelo '
+        'assets/models/model_parameters.json: $error',
+      );
     }
   }
 
+  Map<String, double> _toDoubleMap(Map values) {
+    return Map<String, double>.from(
+      values.map(
+        (key, value) => MapEntry(key.toString(), (value as num).toDouble()),
+      ),
+    );
+  }
+
   /// Ejecuta la inferencia offline del pipeline de IA
-  Future<Map<String, dynamic>> predict(PatientAssessment patient) async {
+  Future<AiPrediction> predict(PatientAssessment patient) async {
     if (!_isLoaded || _params == null) {
       await initialize();
     }
 
-    if (_params == null) {
-      throw StateError('No se pudieron cargar los parámetros del modelo.');
-    }
-
     // 1. Vector numérico (12 características)
-    final numMeans = Map<String, double>.from(
-      (_params!['numeric_scaler_means'] as Map).map(
-        (k, v) => MapEntry(k.toString(), (v as num).toDouble()),
-      ),
-    );
-    final numScales = Map<String, double>.from(
-      (_params!['numeric_scaler_scales'] as Map).map(
-        (k, v) => MapEntry(k.toString(), (v as num).toDouble()),
-      ),
-    );
+    final numMeans = _numericMeans!;
+    final numScales = _numericScales!;
 
     final rawNumeric = {
       'edad_materna': patient.edadMaterna.toDouble(),
@@ -54,10 +64,12 @@ class AiInferenceEngine {
       'presion_diastolica': patient.presionDiastolica,
       'imc': patient.imc,
       'antecedente_preeclampsia': patient.antecedentePreeclampsia ? 1.0 : 0.0,
-      'antecedente_diabetes_gestacional':
-          patient.antecedenteDiabetes ? 1.0 : 0.0,
-      'parto_institucional_previo':
-          patient.partoInstitucionalPrevio ? 1.0 : 0.0,
+      'antecedente_diabetes_gestacional': patient.antecedenteDiabetes
+          ? 1.0
+          : 0.0,
+      'parto_institucional_previo': patient.partoInstitucionalPrevio
+          ? 1.0
+          : 0.0,
     };
 
     final scaledNumeric = <double>[];
@@ -155,13 +167,13 @@ class AiInferenceEngine {
     final pAdverso = 1.0 / (1.0 + math.exp(-zDes));
     final hasAdverseRisk = pAdverso >= thresholdAdverso;
 
-    return {
-      'risk_level': assignedLevel,
-      'prob_alto': pAlto,
-      'prob_medio': pMedio,
-      'prob_bajo': pBajo,
-      'prob_desenlace_adverso': pAdverso,
-      'riesgo_desenlace_adverso': hasAdverseRisk,
-    };
+    return AiPrediction(
+      riskLevel: assignedLevel,
+      probAlto: pAlto,
+      probMedio: pMedio,
+      probBajo: pBajo,
+      probDesenlaceAdverso: pAdverso,
+      riesgoDesenlaceAdverso: hasAdverseRisk,
+    );
   }
 }

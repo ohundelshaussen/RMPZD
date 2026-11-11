@@ -1,13 +1,13 @@
 import '../entities/patient_assessment.dart';
 import '../entities/triage_result.dart';
-import '../repositories/assessment_repository.dart';
+import '../services/risk_classifier.dart';
 
 class EvaluateMaternalRiskUseCase {
-  final AssessmentRepository repository;
+  final RiskClassifier classifier;
 
-  EvaluateMaternalRiskUseCase(this.repository);
+  EvaluateMaternalRiskUseCase(this.classifier);
 
   Future<TriageResult> execute(PatientAssessment patient) async {
-    return await repository.evaluateRisk(patient);
+    return classifier.classify(patient);
   }
 }
