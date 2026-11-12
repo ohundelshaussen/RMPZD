@@ -107,37 +107,7 @@ class _LoginPageState extends State<LoginPage> {
                               strokeWidth: 2,
                             ),
                           )
-                        : const Text('INICIAR SESIÓN (ONLINE)'),
-                  ),
-                  const SizedBox(height: 16),
-                  const Row(
-                    children: [
-                      Expanded(child: Divider()),
-                      Padding(
-                        padding: EdgeInsets.symmetric(horizontal: 12),
-                        child: Text(
-                          'MODO PRUEBAS / OFFLINE',
-                          style: TextStyle(
-                            fontSize: 11,
-                            fontWeight: FontWeight.w600,
-                            color: AppColors.textMuted,
-                          ),
-                        ),
-                      ),
-                      Expanded(child: Divider()),
-                    ],
-                  ),
-                  const SizedBox(height: 14),
-                  OutlinedButton.icon(
-                    icon: const Icon(Icons.medical_services_outlined, size: 18),
-                    label: const Text('Ingresar como Agente Comunitario'),
-                    onPressed: () => provider.signInOffline(asAdmin: false),
-                  ),
-                  const SizedBox(height: 8),
-                  TextButton.icon(
-                    icon: const Icon(Icons.admin_panel_settings_outlined, size: 18),
-                    label: const Text('Ingresar como Administrador'),
-                    onPressed: () => provider.signInOffline(asAdmin: true),
+                        : const Text('INICIAR SESIÓN'),
                   ),
                 ],
               ),

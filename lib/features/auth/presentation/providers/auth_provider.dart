@@ -74,19 +74,6 @@ class AuthProvider extends ChangeNotifier {
     }
   }
 
-  Future<void> signInOffline({bool asAdmin = false}) async {
-    final demoProfile = UserProfile(
-      id: asAdmin ? 'admin-offline' : 'doctor-offline',
-      email: asAdmin ? 'admin@rmpzd.local' : 'medico@rmpzd.local',
-      fullName: asAdmin
-          ? 'Administrador Obstétrico (Demo)'
-          : 'Médico / Promotor de Salud (Offline)',
-      role: asAdmin ? UserRole.admin : UserRole.doctor,
-      active: true,
-    );
-    _setProfile(demoProfile);
-  }
-
   Future<void> signOut() async {
     _isBusy = true;
     _errorMessage = null;
