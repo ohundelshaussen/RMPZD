@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import '../../../../core/constants/input_limits.dart';
+import '../../../../core/utils/validators.dart';
 import 'form_section_header.dart';
 
 class VitalSignsSection extends StatelessWidget {
@@ -33,6 +35,10 @@ class VitalSignsSection extends StatelessWidget {
                         controller: systolicController,
                         label: 'PA Sistólica',
                         suffix: 'mmHg',
+                        validator: requiredDouble(
+                          InputLimits.systolicPressureMin,
+                          InputLimits.systolicPressureMax,
+                        ),
                       ),
                     ),
                     const SizedBox(width: 12),
@@ -41,6 +47,17 @@ class VitalSignsSection extends StatelessWidget {
                         controller: diastolicController,
                         label: 'PA Diastólica',
                         suffix: 'mmHg',
+                        validator: combineValidators([
+                          requiredDouble(
+                            InputLimits.diastolicPressureMin,
+                            InputLimits.diastolicPressureMax,
+                          ),
+                          lessThanController(
+                            systolicController,
+                            message:
+                                'La presión diastólica debe ser menor que la sistólica',
+                          ),
+                        ]),
                       ),
                     ),
                   ],
@@ -53,6 +70,10 @@ class VitalSignsSection extends StatelessWidget {
                         controller: hemoglobinController,
                         label: 'Hemoglobina',
                         suffix: 'g/dL',
+                        validator: requiredDouble(
+                          InputLimits.hemoglobinMin,
+                          InputLimits.hemoglobinMax,
+                        ),
                       ),
                     ),
                     const SizedBox(width: 12),
@@ -61,6 +82,10 @@ class VitalSignsSection extends StatelessWidget {
                         controller: bmiController,
                         label: 'IMC',
                         suffix: 'kg/m²',
+                        validator: requiredDouble(
+                          InputLimits.bmiMin,
+                          InputLimits.bmiMax,
+                        ),
                       ),
                     ),
                   ],
@@ -78,12 +103,13 @@ class VitalSignsSection extends StatelessWidget {
     required TextEditingController controller,
     required String label,
     required String suffix,
+    required FormFieldValidator<String> validator,
   }) {
     return TextFormField(
       controller: controller,
-      keyboardType: TextInputType.number,
+      keyboardType: const TextInputType.numberWithOptions(decimal: true),
       decoration: InputDecoration(labelText: label, suffixText: suffix),
-      validator: (value) => value!.isEmpty ? 'Requerido' : null,
+      validator: validator,
     );
   }
 }

@@ -3,7 +3,11 @@ import '../entities/patient_assessment.dart';
 import '../entities/triage_result.dart';
 
 abstract class AssessmentRepository {
-  Future<int> saveAssessment(PatientAssessment patient, TriageResult result);
-  Future<List<AssessmentRecord>> getHistory();
-  Future<int> getUnsyncedCount();
+  Future<int> saveAssessment(
+    PatientAssessment patient,
+    TriageResult result, {
+    required String ownerId,
+  });
+  Future<List<AssessmentRecord>> getHistory({required String ownerId});
+  Future<int> getUnsyncedCount({required String ownerId});
 }

@@ -50,13 +50,21 @@ void main() {
           hasImmediateEmergency: true,
         ),
         idLocal: 42,
+        uuid: '97c76ec7-9228-4de0-88c3-f2efee432939',
+        ownerId: 'doctor-1',
+        syncStatus: SyncStatus.synced,
         fechaGuardado: date,
-        sincronizado: true,
       );
 
-      final model = AssessmentModel(record: record);
+      final updatedAt = date.add(const Duration(hours: 2));
+      final model = AssessmentModel(
+        record: record,
+        syncAttempts: 2,
+        updatedAt: updatedAt,
+      );
       final row = model.toMap();
-      final restored = AssessmentModel.fromMap(row).record;
+      final restoredModel = AssessmentModel.fromMap(row);
+      final restored = restoredModel.record;
 
       expect(
         row.keys,
@@ -87,15 +95,23 @@ void main() {
           'descripcion_alerta',
           'probabilidad_desenlace_adverso',
           'sincronizado',
+          'uuid',
+          'owner_id',
+          'sync_status',
+          'last_sync_error',
+          'sync_attempts',
+          'updated_at',
         ]),
       );
-      expect(row, hasLength(26));
+      expect(row, hasLength(32));
       expect(model.toJson(), row);
       expect(restored.idLocal, 42);
+      expect(restoredModel.syncAttempts, 2);
+      expect(restoredModel.updatedAt, updatedAt.toUtc());
       expect(restored.patient.patientId, 'MP-TEST');
       expect(restored.patient.presionSistolica, 120);
       expect(restored.fechaGuardado, date);
-      expect(restored.sincronizado, isTrue);
+      expect(restored.isSynced, isTrue);
       expect(restored.result.riskLevel, RiskLevel.alto);
       expect(restored.result.probAlto, 0.6);
       expect(restored.result.riesgoDesenlaceAdverso, isTrue);
@@ -105,4 +121,69 @@ void main() {
       ]);
     },
   );
+
+  test('creates the Supabase payload with UTC dates and no local columns', () {
+    final date = DateTime.parse('2026-11-11T15:00:00-05:00');
+    final record = AssessmentRecord(
+      patient: PatientAssessment(
+        patientId: 'MP-REMOTE',
+        municipio: 'Valledupar',
+        departamento: 'Cesar',
+        etnia: 'No Indígena',
+        zona: 'Urbana',
+        edadMaterna: 24,
+        semanasGestacion: 28,
+        numeroControles: 3,
+        distanciaKm: 18.5,
+        tiempoTrasladoHoras: 1.8,
+        hemoglobina: 11.2,
+        presionSistolica: 120,
+        presionDiastolica: 75,
+        imc: 25.4,
+        antecedentePreeclampsia: true,
+        antecedenteDiabetes: false,
+        partoInstitucionalPrevio: true,
+        afiliacionSgsss: 'Subsidiado',
+        fechaEvaluacion: date,
+      ),
+      result: const TriageResult(
+        riskLevel: RiskLevel.medio,
+        probAlto: 0.3,
+        probMedio: 0.6,
+        probBajo: 0.1,
+        riesgoDesenlaceAdverso: false,
+        probDesenlaceAdverso: 0.2,
+        clinicalAlerts: [],
+        hasImmediateEmergency: false,
+      ),
+      uuid: '97c76ec7-9228-4de0-88c3-f2efee432939',
+      ownerId: 'doctor-1',
+      fechaGuardado: date,
+    );
+
+    final payload = AssessmentModel(record: record).toRemoteJson();
+
+    expect(payload['id'], record.uuid);
+    expect(payload['created_by'], 'doctor-1');
+    expect(payload['antecedente_preeclampsia'], isTrue);
+    expect(payload['antecedente_diabetes'], isFalse);
+    expect(payload['parto_institucional_previo'], isTrue);
+    expect(payload['alerta_clinica_inmediata'], isFalse);
+    expect(payload['fecha_evaluacion'], '2026-11-11T20:00:00.000Z');
+    expect(
+      payload.keys,
+      isNot(
+        contains(
+          anyOf(
+            'owner_id',
+            'sync_status',
+            'sync_attempts',
+            'sincronizado',
+            'last_sync_error',
+          ),
+        ),
+      ),
+    );
+    expect(payload, hasLength(26));
+  });
 }

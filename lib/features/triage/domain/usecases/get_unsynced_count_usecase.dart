@@ -5,7 +5,7 @@ class GetUnsyncedCountUseCase {
 
   GetUnsyncedCountUseCase(this.repository);
 
-  Future<int> execute() async {
-    return repository.getUnsyncedCount();
+  Future<int> execute({required String ownerId}) async {
+    return repository.getUnsyncedCount(ownerId: ownerId);
   }
 }

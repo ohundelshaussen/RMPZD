@@ -7,7 +7,11 @@ class SaveAssessmentUseCase {
 
   SaveAssessmentUseCase(this.repository);
 
-  Future<int> execute(PatientAssessment patient, TriageResult result) async {
-    return repository.saveAssessment(patient, result);
+  Future<int> execute(
+    PatientAssessment patient,
+    TriageResult result, {
+    required String ownerId,
+  }) async {
+    return repository.saveAssessment(patient, result, ownerId: ownerId);
   }
 }

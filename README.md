@@ -24,8 +24,9 @@ Esta aplicación móvil desarrollada en **Flutter** permite a los promotores y a
    * **Capa 1 (Reglas Clínicas Inflexibles):** Si la gestante presenta crisis hipertensiva ($\ge 160/110$ mmHg) o anemia severa ($< 7.0$ g/dL), el sistema activa de inmediato **Alerta Roja Obstétrica / Código Rojo** sin supeditar la decisión al modelo estadístico.
    * **Capa 2 (IA Supervisada Embebida):** Ejecución nativa del pipeline de Machine Learning (imputación, escalado `StandardScaler`, One-Hot Encoding y modelo logístico multiclase y binario) con los umbrales calibrados en la Fase 2 ($0.25$ para riesgo alto y $0.30$ para desenlace adverso).
 2. **Persistencia Local Segura con SQLite:** Almacenamiento íntegro de historias clínicas y dictámenes en el dispositivo móvil.
-3. **Casos Preconfigurados para Demostración / Sustentación:** Botón con selector rápido de casos (Bajo Riesgo Urbano, Emergencia Hipertensiva Wayuu, Riesgo Moderado en Serranía) para agilizar la demo ante el docente.
-4. **Módulo de Auditoría y Métricas IA:** Dashboard visual con métricas de la Fase 2, F1-macro, recall por etnia (Wayuu vs No Indígena) y justificación metodológica.
+3. **Sincronización de subida hacia Supabase:** Cola local por usuario, reintentos idempotentes e aislamiento de registros rechazados; no se descargan evaluaciones del servidor.
+4. **Casos Preconfigurados para Demostración / Sustentación:** Botón con selector rápido de casos (Bajo Riesgo Urbano, Emergencia Hipertensiva Wayuu, Riesgo Moderado en Serranía) para agilizar la demo ante el docente.
+5. **Módulo de Auditoría y Métricas IA:** Dashboard visual con métricas de la Fase 2, F1-macro, recall por etnia (Wayuu vs No Indígena) y justificación metodológica.
 
 ---
 
@@ -73,19 +74,27 @@ lib/
    flutter pub get
    ```
 
-3. Ejecutar pruebas unitarias y de widgets:
+3. Configurar Supabase:
+   ```bash
+   copy env.example.json env.json
+   ```
+   Reemplaza los valores de `env.json` con la URL del proyecto y la clave
+   publicable/anon de Supabase. Este archivo está ignorado por Git; no uses la
+   clave `service_role` en la aplicación.
+
+4. Ejecutar pruebas unitarias y de widgets:
    ```bash
    flutter test
    ```
 
-4. Ejecutar la aplicación:
+5. Ejecutar la aplicación:
    ```bash
    # En Windows Desktop
-   flutter run -d windows
+   flutter run -d windows --dart-define-from-file=env.json
 
    # En Dispositivo o Emulador Android
-   flutter run -d android
+   flutter run -d android --dart-define-from-file=env.json
 
    # En Navegador Web
-   flutter run -d chrome
+   flutter run -d chrome --dart-define-from-file=env.json
    ```

@@ -1,7 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../../../core/constants/app_colors.dart';
+import '../../../../core/sync/sync_provider.dart';
+import '../../../auth/domain/entities/user_profile.dart';
+import '../../../auth/presentation/providers/auth_provider.dart';
 import '../../../triage/domain/entities/assessment_record.dart';
+import '../../../triage/domain/usecases/get_unsynced_count_usecase.dart';
 import '../providers/history_provider.dart';
 
 class HistoryPage extends StatefulWidget {
@@ -20,132 +24,243 @@ class _HistoryPageState extends State<HistoryPage> {
     });
   }
 
+  Future<void> _signOut() async {
+    if (context.read<SyncProvider>().isSyncing) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'Espera a que termine la sincronización para cerrar sesión.',
+          ),
+        ),
+      );
+      return;
+    }
+    final profile = context.read<AuthProvider>().profile;
+    if (profile == null) return;
+    late final int pendingCount;
+    try {
+      pendingCount = await context.read<GetUnsyncedCountUseCase>().execute(
+        ownerId: profile.id,
+      );
+    } catch (error) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            'No se pudieron consultar los registros pendientes: $error',
+          ),
+        ),
+      );
+      return;
+    }
+    if (!mounted) return;
+
+    if (pendingCount > 0) {
+      final confirmed = await showDialog<bool>(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: const Text('Registros pendientes'),
+          content: Text(
+            'Hay $pendingCount registros pendientes. Se sincronizarán cuando '
+            'este usuario vuelva a iniciar sesión con internet. La base local '
+            'se conservará en este dispositivo.',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context, false),
+              child: const Text('Cancelar'),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.pop(context, true),
+              child: const Text('Cerrar sesión'),
+            ),
+          ],
+        ),
+      );
+      if (confirmed != true || !mounted) return;
+    }
+
+    try {
+      await context.read<AuthProvider>().signOut();
+    } catch (error) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('No se pudo cerrar sesión: $error')),
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final provider = context.watch<HistoryProvider>();
+    final syncProvider = context.watch<SyncProvider>();
+    final profile = context.watch<AuthProvider>().profile;
     final history = provider.history;
 
     return Scaffold(
       appBar: AppBar(
         title: const Text('Historial Clínico'),
         actions: [
-          IconButton(
-            icon: const Icon(Icons.cloud_sync_outlined),
-            tooltip: 'Sincronizar con servidor central',
-            onPressed: () {
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
-                  behavior: SnackBarBehavior.floating,
-                  content: Text(
-                    'Comprobando conectividad... Registros almacenados de forma segura en SQLite.',
+          if (profile != null)
+            PopupMenuButton<_AccountAction>(
+              tooltip: 'Cuenta de usuario',
+              onSelected: (action) {
+                if (action == _AccountAction.signOut) _signOut();
+              },
+              itemBuilder: (context) => [
+                PopupMenuItem(
+                  enabled: false,
+                  child: Text(
+                    '${profile.displayName}\n${profile.role.label}',
+                    style: const TextStyle(color: AppColors.textPrimary),
                   ),
                 ),
-              );
-            },
+                const PopupMenuDivider(),
+                const PopupMenuItem(
+                  value: _AccountAction.signOut,
+                  child: Text('Cerrar sesión'),
+                ),
+              ],
+            ),
+          IconButton(
+            icon: syncProvider.isSyncing
+                ? const SizedBox(
+                    width: 20,
+                    height: 20,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  )
+                : const Icon(Icons.cloud_sync_outlined),
+            tooltip: 'Sincronizar ahora',
+            onPressed: syncProvider.isSyncing
+                ? null
+                : () async {
+                    await syncProvider.syncNow();
+                    await provider.loadHistory();
+                  },
           ),
         ],
       ),
       body: RefreshIndicator(
-        onRefresh: () => provider.loadHistory(),
-        child: history.isEmpty
-            ? Center(
-                child: Padding(
-                  padding: const EdgeInsets.all(32),
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.all(20),
-                        decoration: BoxDecoration(
-                          color: const Color(0xFFF1F5F9),
-                          shape: BoxShape.circle,
-                        ),
-                        child: const Icon(
-                          Icons.assignment_outlined,
-                          size: 48,
-                          color: AppColors.textMuted,
-                        ),
+        onRefresh: () async {
+          await provider.loadHistory();
+          await syncProvider.refreshPendingCount();
+        },
+        child: ListView(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+          children: [
+            _buildSyncBanner(context, history.length, syncProvider),
+            const SizedBox(height: 14),
+            if (history.isEmpty)
+              const Padding(
+                padding: EdgeInsets.symmetric(vertical: 48, horizontal: 16),
+                child: Column(
+                  children: [
+                    Icon(
+                      Icons.assignment_outlined,
+                      size: 48,
+                      color: AppColors.textMuted,
+                    ),
+                    SizedBox(height: 16),
+                    Text(
+                      'Sin consultas registradas',
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w700,
+                        color: AppColors.textPrimary,
                       ),
-                      const SizedBox(height: 16),
-                      const Text(
-                        'Sin consultas registradas',
-                        style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w700,
-                          color: AppColors.textPrimary,
-                        ),
+                    ),
+                    SizedBox(height: 6),
+                    Text(
+                      'Las evaluaciones que guardes offline en el triage aparecerán aquí.',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: AppColors.textSecondary,
                       ),
-                      const SizedBox(height: 6),
-                      const Text(
-                        'Las evaluaciones que guardes offline en el triage aparecerán aquí.',
-                        textAlign: TextAlign.center,
-                        style: TextStyle(
-                          fontSize: 12,
-                          color: AppColors.textSecondary,
-                        ),
-                      ),
-                    ],
-                  ),
+                    ),
+                  ],
                 ),
               )
-            : ListView(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 16,
-                  vertical: 10,
-                ),
-                children: [
-                  // Banner de Sincronización
-                  Container(
-                    padding: const EdgeInsets.all(14),
-                    decoration: BoxDecoration(
-                      color: AppColors.surface,
-                      borderRadius: BorderRadius.circular(14),
-                      border: Border.all(color: const Color(0xFFE2E8F0)),
-                    ),
-                    child: Row(
-                      children: [
-                        Container(
-                          padding: const EdgeInsets.all(8),
-                          decoration: BoxDecoration(
-                            color: const Color(0xFFFEF3C7),
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                          child: const Icon(
-                            Icons.cloud_off_rounded,
-                            size: 18,
-                            color: AppColors.secondary,
-                          ),
-                        ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                '${history.length} consultas en SQLite local',
-                                style: const TextStyle(
-                                  fontWeight: FontWeight.w700,
-                                  fontSize: 13,
-                                ),
-                              ),
-                              Text(
-                                '${provider.unsyncedCount} pendientes de sincronización',
-                                style: const TextStyle(
-                                  fontSize: 11,
-                                  color: AppColors.textSecondary,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(height: 14),
+            else
+              ...history.map((record) => _buildRecordCard(record)),
+          ],
+        ),
+      ),
+    );
+  }
 
-                  ...history.map((record) => _buildRecordCard(record)),
-                ],
+  Widget _buildSyncBanner(
+    BuildContext context,
+    int recordCount,
+    SyncProvider syncProvider,
+  ) {
+    final color = syncProvider.hasError
+        ? AppColors.riskHigh
+        : syncProvider.pendingCount > 0
+        ? AppColors.secondary
+        : AppColors.riskLow;
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: const Color(0xFFE2E8F0)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(
+                syncProvider.hasError
+                    ? Icons.cloud_off_rounded
+                    : syncProvider.pendingCount > 0
+                    ? Icons.cloud_upload_outlined
+                    : Icons.cloud_done_outlined,
+                size: 20,
+                color: color,
               ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      '$recordCount consultas en SQLite local',
+                      style: const TextStyle(
+                        fontWeight: FontWeight.w700,
+                        fontSize: 13,
+                      ),
+                    ),
+                    Text(
+                      '${syncProvider.pendingCount} pendientes de sincronización',
+                      style: TextStyle(fontSize: 11, color: color),
+                    ),
+                  ],
+                ),
+              ),
+              FilledButton.tonal(
+                onPressed: syncProvider.isSyncing
+                    ? null
+                    : () async {
+                        await syncProvider.syncNow();
+                        if (context.mounted) {
+                          await context.read<HistoryProvider>().loadHistory();
+                        }
+                      },
+                child: Text(
+                  syncProvider.isSyncing
+                      ? 'Sincronizando'
+                      : 'Sincronizar ahora',
+                ),
+              ),
+            ],
+          ),
+          if (syncProvider.lastMessage case final message?) ...[
+            const SizedBox(height: 8),
+            Text(message, style: TextStyle(fontSize: 11, color: color)),
+          ],
+        ],
       ),
     );
   }
@@ -220,6 +335,43 @@ class _HistoryPageState extends State<HistoryPage> {
             ),
             const Divider(height: 14, color: Color(0xFFF1F5F9)),
             Row(
+              children: [
+                Icon(
+                  switch (record.syncStatus) {
+                    SyncStatus.pending => Icons.schedule_rounded,
+                    SyncStatus.synced => Icons.cloud_done_rounded,
+                    SyncStatus.error => Icons.error_outline_rounded,
+                  },
+                  size: 14,
+                  color: switch (record.syncStatus) {
+                    SyncStatus.pending => AppColors.secondary,
+                    SyncStatus.synced => AppColors.riskLow,
+                    SyncStatus.error => AppColors.riskHigh,
+                  },
+                ),
+                const SizedBox(width: 5),
+                Expanded(
+                  child: Text(
+                    switch (record.syncStatus) {
+                      SyncStatus.pending => 'Pendiente de sincronización',
+                      SyncStatus.synced => 'Sincronizado',
+                      SyncStatus.error =>
+                        'Error: ${record.lastSyncError ?? 'no especificado'}',
+                    },
+                    style: TextStyle(
+                      fontSize: 11,
+                      color: switch (record.syncStatus) {
+                        SyncStatus.pending => AppColors.secondary,
+                        SyncStatus.synced => AppColors.riskLow,
+                        SyncStatus.error => AppColors.riskHigh,
+                      },
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Expanded(
@@ -292,3 +444,5 @@ class _HistoryPageState extends State<HistoryPage> {
     );
   }
 }
+
+enum _AccountAction { signOut }

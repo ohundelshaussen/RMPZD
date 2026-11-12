@@ -145,12 +145,12 @@ class _TriageFormPageState extends State<TriageFormPage> {
       edadMaterna: int.parse(_edadController.text.trim()),
       semanasGestacion: int.parse(_semanasController.text.trim()),
       numeroControles: int.parse(_controlesController.text.trim()),
-      distanciaKm: double.parse(_distanciaController.text.trim()),
-      tiempoTrasladoHoras: double.parse(_tiempoController.text.trim()),
-      hemoglobina: double.parse(_hemoglobinaController.text.trim()),
-      presionSistolica: double.parse(_sistolicaController.text.trim()),
-      presionDiastolica: double.parse(_diastolicaController.text.trim()),
-      imc: double.parse(_imcController.text.trim()),
+      distanciaKm: _parseDouble(_distanciaController.text),
+      tiempoTrasladoHoras: _parseDouble(_tiempoController.text),
+      hemoglobina: _parseDouble(_hemoglobinaController.text),
+      presionSistolica: _parseDouble(_sistolicaController.text),
+      presionDiastolica: _parseDouble(_diastolicaController.text),
+      imc: _parseDouble(_imcController.text),
       antecedentePreeclampsia: _antecedentePreeclampsia,
       antecedenteDiabetes: _antecedenteDiabetes,
       partoInstitucionalPrevio: _partoInstitucionalPrevio,
@@ -164,6 +164,10 @@ class _TriageFormPageState extends State<TriageFormPage> {
       context,
       MaterialPageRoute(builder: (_) => const TriageResultPage()),
     );
+  }
+
+  double _parseDouble(String value) {
+    return double.parse(value.trim().replaceAll(',', '.'));
   }
 
   @override

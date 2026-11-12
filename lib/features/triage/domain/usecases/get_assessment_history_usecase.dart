@@ -6,7 +6,7 @@ class GetAssessmentHistoryUseCase {
 
   GetAssessmentHistoryUseCase(this.repository);
 
-  Future<List<AssessmentRecord>> execute() async {
-    return repository.getHistory();
+  Future<List<AssessmentRecord>> execute({required String ownerId}) async {
+    return repository.getHistory(ownerId: ownerId);
   }
 }

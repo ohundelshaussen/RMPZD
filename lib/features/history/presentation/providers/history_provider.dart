@@ -6,10 +6,12 @@ import '../../../triage/domain/usecases/get_unsynced_count_usecase.dart';
 class HistoryProvider extends ChangeNotifier {
   final GetAssessmentHistoryUseCase _getAssessmentHistory;
   final GetUnsyncedCountUseCase _getUnsyncedCount;
+  final String? Function() currentOwnerId;
 
   HistoryProvider({
     required this._getAssessmentHistory,
     required this._getUnsyncedCount,
+    required this.currentOwnerId,
   });
 
   List<AssessmentRecord> _history = [];
@@ -23,8 +25,15 @@ class HistoryProvider extends ChangeNotifier {
 
   Future<void> loadHistory() async {
     try {
-      _history = await _getAssessmentHistory.execute();
-      _unsyncedCount = await _getUnsyncedCount.execute();
+      final ownerId = currentOwnerId();
+      if (ownerId == null) {
+        _history = [];
+        _unsyncedCount = 0;
+        notifyListeners();
+        return;
+      }
+      _history = await _getAssessmentHistory.execute(ownerId: ownerId);
+      _unsyncedCount = await _getUnsyncedCount.execute(ownerId: ownerId);
       _errorMessage = null;
       notifyListeners();
     } catch (error) {

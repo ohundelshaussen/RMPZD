@@ -6,8 +6,14 @@ import '../../domain/entities/triage_result.dart';
 
 class AssessmentModel {
   final AssessmentRecord record;
+  final int syncAttempts;
+  final DateTime? updatedAt;
 
-  const AssessmentModel({required this.record});
+  const AssessmentModel({
+    required this.record,
+    this.syncAttempts = 0,
+    this.updatedAt,
+  });
 
   Map<String, dynamic> toMap() {
     final patient = record.patient;
@@ -41,11 +47,54 @@ class AssessmentModel {
           ? result.clinicalAlerts.map((alert) => alert.title).join(' | ')
           : null,
       'probabilidad_desenlace_adverso': result.probDesenlaceAdverso,
-      'sincronizado': record.sincronizado ? 1 : 0,
+      'sincronizado': record.isSynced ? 1 : 0,
+      'uuid': record.uuid,
+      'owner_id': record.ownerId,
+      'sync_status': record.syncStatus.name,
+      'last_sync_error': record.lastSyncError,
+      'sync_attempts': syncAttempts,
+      'updated_at': (updatedAt ?? record.fechaGuardado)
+          .toUtc()
+          .toIso8601String(),
     };
   }
 
   Map<String, dynamic> toJson() => toMap();
+
+  Map<String, dynamic> toRemoteJson() {
+    final patient = record.patient;
+    final result = record.result;
+    return {
+      'id': record.uuid,
+      'created_by': record.ownerId,
+      'patient_id': patient.patientId,
+      'municipio': patient.municipio,
+      'departamento': patient.departamento,
+      'etnia': patient.etnia,
+      'zona': patient.zona,
+      'edad_materna': patient.edadMaterna,
+      'semanas_gestacion': patient.semanasGestacion,
+      'numero_controles': patient.numeroControles,
+      'distancia_km': patient.distanciaKm,
+      'tiempo_traslado_horas': patient.tiempoTrasladoHoras,
+      'hemoglobina': patient.hemoglobina,
+      'presion_sistolica': patient.presionSistolica,
+      'presion_diastolica': patient.presionDiastolica,
+      'imc': patient.imc,
+      'antecedente_preeclampsia': patient.antecedentePreeclampsia,
+      'antecedente_diabetes': patient.antecedenteDiabetes,
+      'parto_institucional_previo': patient.partoInstitucionalPrevio,
+      'afiliacion_sgsss': patient.afiliacionSgsss,
+      'fecha_evaluacion': record.fechaGuardado.toUtc().toIso8601String(),
+      'nivel_riesgo_predicho': result.riskLabel,
+      'probabilidad_riesgo_alto': result.probAlto,
+      'alerta_clinica_inmediata': result.hasImmediateEmergency,
+      'descripcion_alerta': result.clinicalAlerts.isNotEmpty
+          ? result.clinicalAlerts.map((alert) => alert.title).join(' | ')
+          : null,
+      'probabilidad_desenlace_adverso': result.probDesenlaceAdverso,
+    };
+  }
 
   factory AssessmentModel.fromMap(Map<String, dynamic> map) {
     final hasImmediateEmergency =
@@ -59,6 +108,13 @@ class AssessmentModel {
     final probabilityAdverseOutcome =
         (map['probabilidad_desenlace_adverso'] as num).toDouble();
     final fechaGuardado = DateTime.parse(map['fecha_evaluacion'] as String);
+    final uuid = map['uuid'];
+    final updatedAtValue = map['updated_at'];
+    if (uuid is! String || uuid.isEmpty) {
+      throw const FormatException(
+        'El UUID local de la evaluación no es válido.',
+      );
+    }
 
     final patient = PatientAssessment(
       patientId: map['patient_id'] as String,
@@ -107,12 +163,23 @@ class AssessmentModel {
     );
 
     return AssessmentModel(
+      syncAttempts: (map['sync_attempts'] as num?)?.toInt() ?? 0,
+      updatedAt: updatedAtValue is String
+          ? DateTime.parse(updatedAtValue)
+          : null,
       record: AssessmentRecord(
         patient: patient,
         result: result,
         idLocal: map['id'] as int?,
+        uuid: uuid,
+        ownerId: map['owner_id'] as String?,
+        syncStatus: SyncStatus.values.firstWhere(
+          (status) =>
+              status.name == (map['sync_status'] as String? ?? 'pending'),
+          orElse: () => SyncStatus.pending,
+        ),
+        lastSyncError: map['last_sync_error'] as String?,
         fechaGuardado: fechaGuardado,
-        sincronizado: (map['sincronizado'] as int? ?? 0) == 1,
       ),
     );
   }

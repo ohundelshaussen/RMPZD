@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import '../../../../core/constants/input_limits.dart';
+import '../../../../core/utils/validators.dart';
 import 'form_section_header.dart';
 
 class GestationAccessSection extends StatelessWidget {
@@ -35,6 +37,11 @@ class GestationAccessSection extends StatelessWidget {
                         controller: ageController,
                         label: 'Edad Materna',
                         suffix: 'años',
+                        validator: requiredInt(
+                          InputLimits.ageMin,
+                          InputLimits.ageMax,
+                        ),
+                        integer: true,
                       ),
                     ),
                     const SizedBox(width: 12),
@@ -43,6 +50,11 @@ class GestationAccessSection extends StatelessWidget {
                         controller: weeksController,
                         label: 'Semanas Gest.',
                         suffix: 'sem',
+                        validator: requiredInt(
+                          InputLimits.gestationalWeeksMin,
+                          InputLimits.gestationalWeeksMax,
+                        ),
+                        integer: true,
                       ),
                     ),
                   ],
@@ -54,6 +66,11 @@ class GestationAccessSection extends StatelessWidget {
                       child: _numberField(
                         controller: visitsController,
                         label: 'Controles Realizados',
+                        validator: requiredInt(
+                          InputLimits.prenatalVisitsMin,
+                          InputLimits.prenatalVisitsMax,
+                        ),
+                        integer: true,
                       ),
                     ),
                     const SizedBox(width: 12),
@@ -62,6 +79,10 @@ class GestationAccessSection extends StatelessWidget {
                         controller: distanceController,
                         label: 'Distancia Centro',
                         suffix: 'km',
+                        validator: requiredDouble(
+                          InputLimits.distanceMin,
+                          InputLimits.distanceMax,
+                        ),
                       ),
                     ),
                   ],
@@ -71,6 +92,10 @@ class GestationAccessSection extends StatelessWidget {
                   controller: travelTimeController,
                   label: 'Tiempo Estimado de Traslado',
                   suffix: 'horas',
+                  validator: requiredDouble(
+                    InputLimits.travelTimeMin,
+                    InputLimits.travelTimeMax,
+                  ),
                 ),
               ],
             ),
@@ -84,13 +109,17 @@ class GestationAccessSection extends StatelessWidget {
   Widget _numberField({
     required TextEditingController controller,
     required String label,
+    required FormFieldValidator<String> validator,
+    bool integer = false,
     String? suffix,
   }) {
     return TextFormField(
       controller: controller,
-      keyboardType: TextInputType.number,
+      keyboardType: integer
+          ? TextInputType.number
+          : const TextInputType.numberWithOptions(decimal: true),
       decoration: InputDecoration(labelText: label, suffixText: suffix),
-      validator: (value) => value!.isEmpty ? 'Requerido' : null,
+      validator: validator,
     );
   }
 }
