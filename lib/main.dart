@@ -7,10 +7,10 @@ import 'core/config/app_config.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  final config = AppConfig.fromEnvironment();
   SupabaseClient? supabaseClient;
   String? authInitializationError;
   try {
+    final config = AppConfig.fromEnvironment();
     await Supabase.initialize(
       url: config.supabaseUrl,
       publishableKey: config.supabaseAnonKey,
