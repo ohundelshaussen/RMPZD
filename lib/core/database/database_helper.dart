@@ -60,10 +60,12 @@ class DatabaseHelper {
   }
 
   Future<Database> _initDB(String filePath) async {
-    // If running on Windows / Linux desktop in debug or release, initialize FFI
+    // If running on Windows / Linux desktop in debug or release, ensure FFI is ready
     if (!kIsWeb && (Platform.isWindows || Platform.isLinux)) {
       sqfliteFfiInit();
-      databaseFactory = databaseFactoryFfi;
+      if (databaseFactory != databaseFactoryFfi) {
+        databaseFactory = databaseFactoryFfi;
+      }
     }
 
     final dbPath = await getDatabasesPath();
