@@ -10,9 +10,19 @@ class AcademicDashboardPage extends StatelessWidget {
       appBar: AppBar(
         title: const Text('Auditoría y Métricas IA (Fase 2)'),
       ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16),
-        child: Column(
+      body: const AcademicDashboardBody(),
+    );
+  }
+}
+
+class AcademicDashboardBody extends StatelessWidget {
+  const AcademicDashboardBody({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(16),
+      child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             // Header Card
@@ -162,8 +172,7 @@ class AcademicDashboardPage extends StatelessWidget {
               ),
             ),
             const SizedBox(height: 24),
-          ],
-        ),
+        ],
       ),
     );
   }

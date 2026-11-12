@@ -16,6 +16,17 @@ import '../features/auth/domain/usecases/get_current_profile_usecase.dart';
 import '../features/auth/domain/usecases/sign_in_usecase.dart';
 import '../features/auth/domain/usecases/sign_out_usecase.dart';
 import '../features/auth/presentation/providers/auth_provider.dart';
+import '../features/admin_records/data/datasources/admin_records_remote_datasource.dart';
+import '../features/admin_records/data/repositories/admin_records_repository_impl.dart';
+import '../features/admin_records/domain/repositories/admin_records_repository.dart';
+import '../features/admin_records/domain/usecases/get_admin_assessments_usecase.dart';
+import '../features/admin_records/presentation/providers/admin_records_provider.dart';
+import '../features/dashboard/data/datasources/dashboard_local_cache.dart';
+import '../features/dashboard/data/datasources/dashboard_remote_data_source.dart';
+import '../features/dashboard/data/repositories/dashboard_repository_impl.dart';
+import '../features/dashboard/domain/repositories/dashboard_repository.dart';
+import '../features/dashboard/domain/usecases/get_dashboard_stats_usecase.dart';
+import '../features/dashboard/presentation/providers/dashboard_provider.dart';
 import '../features/history/presentation/providers/history_provider.dart';
 import '../features/triage/data/datasources/ai_inference_engine.dart';
 import '../features/triage/data/datasources/assessment_local_datasource.dart';
@@ -80,6 +91,48 @@ List<SingleChildWidget> createAppProviders({
         repository: context.read<AuthRepository>(),
       ),
     ),
+    Provider<AdminRecordsRemoteDataSource>(
+      create: (_) =>
+          SupabaseAdminRecordsRemoteDataSource(client: supabaseClient),
+    ),
+    Provider<AdminRecordsRepository>(
+      create: (context) => AdminRecordsRepositoryImpl(
+        context.read<AdminRecordsRemoteDataSource>(),
+      ),
+    ),
+    Provider<GetAdminAssessmentsUseCase>(
+      create: (context) =>
+          GetAdminAssessmentsUseCase(context.read<AdminRecordsRepository>()),
+    ),
+    ChangeNotifierProvider<AdminRecordsProvider>(
+      create: (context) => AdminRecordsProvider(
+        getAssessments: context.read<GetAdminAssessmentsUseCase>(),
+        connectivityService: context.read<ConnectivityService>(),
+      ),
+    ),
+    Provider<DashboardRemoteDataSource>(
+      create: (_) =>
+          SupabaseDashboardRemoteDataSource(client: supabaseClient),
+    ),
+    Provider<DashboardLocalCache>(
+      create: (_) => DashboardLocalCache(preferences: sharedPreferences),
+    ),
+    Provider<DashboardRepository>(
+      create: (context) => DashboardRepositoryImpl(
+        remoteDataSource: context.read<DashboardRemoteDataSource>(),
+        localCache: context.read<DashboardLocalCache>(),
+      ),
+    ),
+    Provider<GetDashboardStatsUseCase>(
+      create: (context) =>
+          GetDashboardStatsUseCase(context.read<DashboardRepository>()),
+    ),
+    ChangeNotifierProvider<DashboardProvider>(
+      create: (context) => DashboardProvider(
+        getStats: context.read<GetDashboardStatsUseCase>(),
+        repository: context.read<DashboardRepository>(),
+      ),
+    ),
     Provider<DatabaseHelper>(create: (_) => DatabaseHelper.instance),
     Provider<AssessmentLocalDataSource>(
       create: (context) =>
@@ -126,6 +179,13 @@ List<SingleChildWidget> createAppProviders({
         hasSession: () => context.read<AuthProvider>().profile != null,
       ),
     ),
+    ChangeNotifierProvider<HistoryProvider>(
+      create: (context) => HistoryProvider(
+        getAssessmentHistory: context.read<GetAssessmentHistoryUseCase>(),
+        getUnsyncedCount: context.read<GetUnsyncedCountUseCase>(),
+        currentOwnerId: () => context.read<AuthProvider>().profile?.id,
+      ),
+    ),
     ChangeNotifierProvider<SyncProvider>(
       lazy: false,
       create: (context) => SyncProvider(
@@ -145,13 +205,6 @@ List<SingleChildWidget> createAppProviders({
           final syncProvider = context.read<SyncProvider>();
           await syncProvider.syncNow();
         },
-      ),
-    ),
-    ChangeNotifierProvider<HistoryProvider>(
-      create: (context) => HistoryProvider(
-        getAssessmentHistory: context.read<GetAssessmentHistoryUseCase>(),
-        getUnsyncedCount: context.read<GetUnsyncedCountUseCase>(),
-        currentOwnerId: () => context.read<AuthProvider>().profile?.id,
       ),
     ),
   ];

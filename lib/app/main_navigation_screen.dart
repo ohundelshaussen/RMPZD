@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
 import '../core/constants/app_colors.dart';
 import '../features/auth/domain/entities/user_profile.dart';
-import '../features/dashboard/presentation/pages/academic_dashboard_page.dart';
+import '../features/admin_records/presentation/pages/admin_records_page.dart';
+import '../features/dashboard/presentation/pages/admin_dashboard_page.dart';
 import '../features/history/presentation/pages/history_page.dart';
 import '../features/triage/presentation/pages/triage_form_page.dart';
 
@@ -32,10 +33,17 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
     ),
     if (widget.profile.role == UserRole.admin)
       const _NavigationTab(
-        page: AcademicDashboardPage(),
+        page: AdminRecordsPage(),
+        icon: Icons.folder_open_outlined,
+        selectedIcon: Icons.folder_open_rounded,
+        label: 'Registros',
+      ),
+    if (widget.profile.role == UserRole.admin)
+      const _NavigationTab(
+        page: AdminDashboardPage(),
         icon: Icons.insights_outlined,
         selectedIcon: Icons.insights_rounded,
-        label: 'Métricas IA',
+        label: 'Dashboard',
       ),
     // Future administrator tabs can be appended here.
   ];

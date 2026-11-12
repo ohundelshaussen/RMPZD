@@ -94,7 +94,16 @@ class SyncProvider extends ChangeNotifier {
       notifyListeners();
     }
     final syncComplete = onSyncComplete;
-    if (syncComplete != null) await syncComplete();
+    if (syncComplete != null) {
+      try {
+        await syncComplete();
+      } catch (error, stackTrace) {
+        debugPrint(
+          'No se pudo actualizar el historial tras sincronizar: $error',
+        );
+        debugPrintStack(stackTrace: stackTrace);
+      }
+    }
   }
 
   void _onAuthChanged() {
