@@ -5,6 +5,7 @@ import '../../../history/presentation/providers/history_provider.dart';
 import '../providers/triage_provider.dart';
 import '../widgets/ai_probability_card.dart';
 import '../widgets/clinical_alert_section.dart';
+import '../widgets/consultation_code_card.dart';
 import '../widgets/result_status_card.dart';
 
 class TriageResultPage extends StatelessWidget {
@@ -35,44 +36,53 @@ class TriageResultPage extends StatelessWidget {
             AiProbabilityCard(result: result),
             const SizedBox(height: 16),
             ClinicalAlertSection(alerts: result.clinicalAlerts),
-            ElevatedButton.icon(
-              icon: const Icon(Icons.check_rounded, size: 20),
-              label: const Text('GUARDAR EN REGISTRO LOCAL'),
-              onPressed: () async {
-                final success = await provider.saveCurrentAssessment();
-                if (!context.mounted) return;
-                if (success) {
-                  await context.read<HistoryProvider>().loadHistory();
-                }
-                if (!context.mounted) return;
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    behavior: SnackBarBehavior.floating,
-                    backgroundColor: success
-                        ? AppColors.primary
-                        : AppColors.riskHigh,
-                    content: Text(
-                      success
-                          ? 'Consulta registrada en base de datos local SQLite.'
-                          : 'Error al registrar consulta.',
+            if (provider.savedAssessment?.consultationCode
+                case final consultationCode?) ...[
+              ConsultationCodeCard(code: consultationCode),
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: const Text('Volver al formulario'),
+              ),
+            ] else ...[
+              ElevatedButton.icon(
+                icon: const Icon(Icons.check_rounded, size: 20),
+                label: const Text('GUARDAR EN REGISTRO LOCAL'),
+                onPressed: () async {
+                  final success = await provider.saveCurrentAssessment();
+                  if (!context.mounted) return;
+                  if (success) {
+                    await context.read<HistoryProvider>().loadHistory();
+                  }
+                  if (!context.mounted) return;
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      behavior: SnackBarBehavior.floating,
+                      backgroundColor: success
+                          ? AppColors.primary
+                          : AppColors.riskHigh,
+                      content: Text(
+                        success
+                            ? 'Consulta registrada en base de datos local SQLite.'
+                            : 'Error al registrar consulta.',
+                      ),
                     ),
+                  );
+                },
+              ),
+              const SizedBox(height: 8),
+            ],
+            if (provider.savedAssessment == null)
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: const Text(
+                  'Descartar y Volver al Formulario',
+                  style: TextStyle(
+                    color: AppColors.textSecondary,
+                    fontWeight: FontWeight.w600,
+                    fontSize: 13,
                   ),
-                );
-                if (success) Navigator.pop(context);
-              },
-            ),
-            const SizedBox(height: 8),
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: const Text(
-                'Descartar y Volver al Formulario',
-                style: TextStyle(
-                  color: AppColors.textSecondary,
-                  fontWeight: FontWeight.w600,
-                  fontSize: 13,
                 ),
               ),
-            ),
             const SizedBox(height: 20),
           ],
         ),

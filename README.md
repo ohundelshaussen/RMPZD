@@ -25,8 +25,9 @@ Esta aplicación móvil desarrollada en **Flutter** permite a los promotores y a
    * **Capa 2 (IA Supervisada Embebida):** Ejecución nativa del pipeline de Machine Learning (imputación, escalado `StandardScaler`, One-Hot Encoding y modelo logístico multiclase y binario) con los umbrales calibrados en la Fase 2 ($0.25$ para riesgo alto y $0.30$ para desenlace adverso).
 2. **Persistencia Local Segura con SQLite:** Almacenamiento íntegro de historias clínicas y dictámenes en el dispositivo móvil.
 3. **Sincronización de subida hacia Supabase:** Cola local por usuario, reintentos idempotentes e aislamiento de registros rechazados; no se descargan evaluaciones del servidor.
-4. **Casos Preconfigurados para Demostración / Sustentación:** Botón con selector rápido de casos (Bajo Riesgo Urbano, Emergencia Hipertensiva Wayuu, Riesgo Moderado en Serranía) para agilizar la demo ante el docente.
-5. **Módulo de Auditoría y Métricas IA:** Dashboard visual con métricas de la Fase 2, F1-macro, recall por etnia (Wayuu vs No Indígena) y justificación metodológica.
+4. **Consulta de resultados para pacientes:** Sin iniciar sesión, la paciente consulta por internet usando su ID y el código entregado por su profesional de salud. La consulta usa la RPC pública; sus datos permanecen solo en memoria en el dispositivo.
+5. **Casos Preconfigurados para Demostración / Sustentación:** Botón con selector rápido de casos (Bajo Riesgo Urbano, Emergencia Hipertensiva Wayuu, Riesgo Moderado en Serranía) para agilizar la demo ante el docente.
+6. **Módulo de Auditoría y Métricas IA:** Dashboard visual con métricas de la Fase 2, F1-macro, recall por etnia (Wayuu vs No Indígena) y justificación metodológica.
 
 ---
 
@@ -49,6 +50,11 @@ lib/
     │
     ├── history/             # Historial de consultas prenatales guardadas en SQLite
     │   └── presentation/    # Lista de pacientes, estados y cola de sincronización
+    │
+    ├── patient_portal/      # Consulta pública del resultado mediante ID y código
+    │   ├── data/            # Llamada RPC de consulta (solo requiere conexión)
+    │   ├── domain/          # Resultado y caso de uso de consulta
+    │   └── presentation/    # Formulario y resultados para la paciente
     │
     └── dashboard/           # Métricas académicas y auditoría de subgrupos para la sustentación
         └── presentation/    # Tablas comparativas de modelos y análisis de sesgo étnico

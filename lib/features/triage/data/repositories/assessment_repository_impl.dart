@@ -5,6 +5,7 @@ import '../../domain/repositories/assessment_repository.dart';
 import '../datasources/assessment_local_datasource.dart';
 import '../models/assessment_model.dart';
 import 'package:uuid/uuid.dart';
+import '../../../../core/utils/consultation_code_generator.dart';
 
 class AssessmentRepositoryImpl implements AssessmentRepository {
   final AssessmentLocalDataSource localDataSource;
@@ -12,7 +13,7 @@ class AssessmentRepositoryImpl implements AssessmentRepository {
   AssessmentRepositoryImpl({required this.localDataSource});
 
   @override
-  Future<int> saveAssessment(
+  Future<AssessmentRecord> saveAssessment(
     PatientAssessment patient,
     TriageResult result, {
     required String ownerId,
@@ -23,6 +24,7 @@ class AssessmentRepositoryImpl implements AssessmentRepository {
         result: result,
         uuid: const Uuid().v4(),
         ownerId: ownerId,
+        consultationCode: ConsultationCodeGenerator().generate(),
         fechaGuardado: patient.fechaEvaluacion,
       ),
     );
@@ -30,7 +32,7 @@ class AssessmentRepositoryImpl implements AssessmentRepository {
       assessment,
       ownerId: ownerId,
     );
-    return savedAssessment.record.idLocal!;
+    return savedAssessment.record;
   }
 
   @override

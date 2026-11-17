@@ -4,8 +4,8 @@ import 'package:provider/single_child_widget.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../features/auth/domain/entities/user_profile.dart';
-import '../features/auth/presentation/pages/login_page.dart';
 import '../features/auth/presentation/providers/auth_provider.dart';
+import '../features/patient_portal/presentation/pages/patient_lookup_page.dart';
 import '../core/theme/app_theme.dart';
 import 'di.dart';
 import 'main_navigation_screen.dart';
@@ -71,11 +71,11 @@ class _AuthGateState extends State<_AuthGate> {
       case AuthStatus.loading:
         return const Scaffold(body: Center(child: CircularProgressIndicator()));
       case AuthStatus.unauthenticated:
-        return const LoginPage();
+        return const PatientLookupPage();
       case AuthStatus.authenticated:
         final UserProfile? profile = authProvider.profile;
         if (profile == null) {
-          return const LoginPage();
+          return const PatientLookupPage();
         }
         return MainNavigationScreen(profile: profile);
     }

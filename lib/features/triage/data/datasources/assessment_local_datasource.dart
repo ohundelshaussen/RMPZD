@@ -25,6 +25,7 @@ class AssessmentLocalDataSource {
         ownerId: ownerId,
         syncStatus: record.syncStatus,
         lastSyncError: record.lastSyncError,
+        consultationCode: record.consultationCode,
         fechaGuardado: record.fechaGuardado,
       ),
     );

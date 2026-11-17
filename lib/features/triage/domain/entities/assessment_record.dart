@@ -11,6 +11,7 @@ class AssessmentRecord {
   final String? ownerId;
   final SyncStatus syncStatus;
   final String? lastSyncError;
+  final String? consultationCode;
   final DateTime fechaGuardado;
 
   const AssessmentRecord({
@@ -21,6 +22,7 @@ class AssessmentRecord {
     required this.ownerId,
     this.syncStatus = SyncStatus.pending,
     this.lastSyncError,
+    this.consultationCode,
     required this.fechaGuardado,
   });
 

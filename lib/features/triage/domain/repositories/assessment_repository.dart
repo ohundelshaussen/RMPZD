@@ -3,7 +3,7 @@ import '../entities/patient_assessment.dart';
 import '../entities/triage_result.dart';
 
 abstract class AssessmentRepository {
-  Future<int> saveAssessment(
+  Future<AssessmentRecord> saveAssessment(
     PatientAssessment patient,
     TriageResult result, {
     required String ownerId,

@@ -28,6 +28,9 @@ import '../features/dashboard/domain/repositories/dashboard_repository.dart';
 import '../features/dashboard/domain/usecases/get_dashboard_stats_usecase.dart';
 import '../features/dashboard/presentation/providers/dashboard_provider.dart';
 import '../features/history/presentation/providers/history_provider.dart';
+import '../features/patient_portal/data/datasources/patient_portal_remote_data_source.dart';
+import '../features/patient_portal/domain/usecases/lookup_patient_records_usecase.dart';
+import '../features/patient_portal/presentation/providers/patient_portal_provider.dart';
 import '../features/triage/data/datasources/ai_inference_engine.dart';
 import '../features/triage/data/datasources/assessment_local_datasource.dart';
 import '../features/triage/data/datasources/assessment_remote_datasource.dart';
@@ -52,6 +55,19 @@ List<SingleChildWidget> createAppProviders({
       create: (_) => ConnectivityService(
         connectivity: Connectivity(),
         client: supabaseClient,
+      ),
+    ),
+    Provider<PatientPortalRemoteDataSource>(
+      create: (_) => PatientPortalRemoteDataSource(client: supabaseClient),
+    ),
+    Provider<LookupPatientRecordsUseCase>(
+      create: (context) => LookupPatientRecordsUseCase(
+        context.read<PatientPortalRemoteDataSource>(),
+      ),
+    ),
+    ChangeNotifierProvider<PatientPortalProvider>(
+      create: (context) => PatientPortalProvider(
+        lookupPatientRecords: context.read<LookupPatientRecordsUseCase>(),
       ),
     ),
     Provider<NetworkStatusDataSource>(

@@ -6,6 +6,7 @@ import '../../../auth/domain/entities/user_profile.dart';
 import '../../../auth/presentation/providers/auth_provider.dart';
 import '../../../triage/domain/entities/assessment_record.dart';
 import '../../../triage/domain/usecases/get_unsynced_count_usecase.dart';
+import '../../../triage/presentation/widgets/consultation_code_card.dart';
 import '../providers/history_provider.dart';
 
 class HistoryPage extends StatefulWidget {
@@ -288,7 +289,10 @@ class _HistoryPageState extends State<HistoryPage> {
 
     return Card(
       margin: const EdgeInsets.only(bottom: 10),
-      child: Padding(
+      child: InkWell(
+        borderRadius: BorderRadius.circular(12),
+        onTap: () => _showRecordDetails(record),
+        child: Padding(
         padding: const EdgeInsets.all(14),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -421,6 +425,41 @@ class _HistoryPageState extends State<HistoryPage> {
               ),
             ],
           ],
+        ),
+        ),
+      ),
+    );
+  }
+
+  void _showRecordDetails(AssessmentRecord record) {
+    showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      builder: (context) => SafeArea(
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.all(20),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Text(
+                'Detalle de evaluación · ${record.patient.patientId}',
+                style: Theme.of(context).textTheme.titleLarge,
+              ),
+              const SizedBox(height: 12),
+              Text('Fecha: ${record.fechaGuardado.toIso8601String().split('T').first}'),
+              Text('Municipio: ${record.patient.municipio}'),
+              Text('Semanas de gestación: ${record.patient.semanasGestacion}'),
+              Text('Resultado: ${record.result.riskLabel}'),
+              if (record.result.clinicalAlerts.isNotEmpty)
+                Text(
+                  'Alerta: ${record.result.clinicalAlerts.map((alert) => alert.title).join(' | ')}',
+                ),
+              if (record.consultationCode case final code?) ...[
+                const SizedBox(height: 12),
+                ConsultationCodeCard(code: code),
+              ],
+            ],
+          ),
         ),
       ),
     );
