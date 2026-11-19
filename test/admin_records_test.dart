@@ -80,6 +80,53 @@ void main() {
       expect(assessment.doctorName, 'medico@example.org');
       expect(assessment.doctorEmail, 'medico@example.org');
     });
+
+    test(
+      'preserves base and previously discovered filter catalogs when filtered results are empty',
+      () async {
+        var returnEmpty = false;
+        final source = _FakeDataSource(
+          onFetch: (offset, limit, filters) =>
+              returnEmpty ? const [] : [_assessment(1)],
+        );
+        final provider = _provider(source);
+
+        await provider.loadInitial();
+        expect(provider.doctors, containsPair('doctor-1', 'Dra. Test'));
+        expect(provider.departments, containsAll(['La Guajira', 'Cesar']));
+        expect(
+          provider.riskLevels,
+          containsAll([
+            'Bajo Riesgo',
+            'Riesgo Moderado',
+            'Alto Riesgo Obstétrico',
+            'Alto Riesgo',
+          ]),
+        );
+
+        returnEmpty = true;
+        await provider.setFilters(
+          const AdminAssessmentFilters(
+            doctorId: 'doctor-1',
+            department: 'La Guajira',
+            riskLevel: 'Bajo Riesgo',
+          ),
+        );
+
+        expect(provider.records, isEmpty);
+        expect(provider.doctors, containsPair('doctor-1', 'Dra. Test'));
+        expect(provider.departments, containsAll(['La Guajira', 'Cesar']));
+        expect(
+          provider.riskLevels,
+          containsAll([
+            'Bajo Riesgo',
+            'Riesgo Moderado',
+            'Alto Riesgo Obstétrico',
+            'Alto Riesgo',
+          ]),
+        );
+      },
+    );
   });
 }
 

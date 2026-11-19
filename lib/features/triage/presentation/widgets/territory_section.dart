@@ -48,7 +48,8 @@ class TerritorySection extends StatelessWidget {
                     labelText: 'Identificador / ID de Gestante',
                     prefixIcon: Icon(Icons.badge_outlined, size: 20),
                   ),
-                  validator: (value) => value!.isEmpty ? 'Requerido' : null,
+                  validator: (value) =>
+                      (value == null || value.trim().isEmpty) ? 'Requerido' : null,
                 ),
                 const SizedBox(height: 12),
                 Row(

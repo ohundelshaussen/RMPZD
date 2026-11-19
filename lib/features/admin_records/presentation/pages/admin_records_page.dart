@@ -100,16 +100,40 @@ class _AdminRecordsPageState extends State<AdminRecordsPage> {
     required Map<T, String> values,
     required ValueChanged<T?> onChanged,
   }) {
-    return DropdownButton<T>(
-      hint: Text(label),
-      value: values.containsKey(value) ? value : null,
-      underline: const SizedBox.shrink(),
-      items: [
-        DropdownMenuItem<T>(value: null, child: Text('Todos: $label')),
-        for (final entry in values.entries)
-          DropdownMenuItem<T>(value: entry.key, child: Text(entry.value)),
-      ],
-      onChanged: onChanged,
+    final T? selectedValue =
+        (value != null && values.containsKey(value)) ? value : null;
+    return ConstrainedBox(
+      constraints: const BoxConstraints(maxWidth: 220),
+      child: DropdownButton<T>(
+        isExpanded: true,
+        hint: Text(
+          label,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+        ),
+        value: selectedValue,
+        underline: const SizedBox.shrink(),
+        items: [
+          DropdownMenuItem<T>(
+            value: null,
+            child: Text(
+              'Todos: $label',
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
+          ),
+          for (final entry in values.entries)
+            DropdownMenuItem<T>(
+              value: entry.key,
+              child: Text(
+                entry.value,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+        ],
+        onChanged: onChanged,
+      ),
     );
   }
 
@@ -202,14 +226,21 @@ class _AdminRecordsPageState extends State<AdminRecordsPage> {
                   Expanded(
                     child: Text(
                       record.patientId ?? 'Paciente sin identificador',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
                       style: const TextStyle(fontWeight: FontWeight.w700),
                     ),
                   ),
-                  Text(
-                    record.riskLevel ?? 'Riesgo no informado',
-                    style: const TextStyle(
-                      color: AppColors.primary,
-                      fontWeight: FontWeight.w700,
+                  const SizedBox(width: 8),
+                  Flexible(
+                    child: Text(
+                      record.riskLevel ?? 'Riesgo no informado',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        color: AppColors.primary,
+                        fontWeight: FontWeight.w700,
+                      ),
                     ),
                   ),
                 ],
@@ -336,7 +367,7 @@ class _AdminRecordsPageState extends State<AdminRecordsPage> {
       return 'Fechas';
     }
     final format = DateFormat('dd/MM/yy');
-    return '${format.format(filters.fromDate!)} – ${format.format(filters.toDate!)}';
+    return '${format.format(filters.fromDate!)} - ${format.format(filters.toDate!)}';
   }
 
   AdminAssessmentFilters _copyFilters(

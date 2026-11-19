@@ -87,16 +87,18 @@ class AiProbabilityCard extends StatelessWidget {
                             : AppColors.riskLow,
                       ),
                       const SizedBox(width: 6),
-                      Text(
-                        result.riesgoDesenlaceAdverso
-                            ? 'Posible Complicación Obstétrica (${(result.probDesenlaceAdverso * 100).toStringAsFixed(1)}%)'
-                            : 'Desenlace Normal / Estable (${(result.probDesenlaceAdverso * 100).toStringAsFixed(1)}%)',
-                        style: TextStyle(
-                          fontSize: 12,
-                          fontWeight: FontWeight.w700,
-                          color: result.riesgoDesenlaceAdverso
-                              ? AppColors.riskHigh
-                              : AppColors.riskLow,
+                      Flexible(
+                        child: Text(
+                          result.riesgoDesenlaceAdverso
+                              ? 'Posible Complicación Obstétrica (${(result.probDesenlaceAdverso * 100).toStringAsFixed(1)}%)'
+                              : 'Desenlace Normal / Estable (${(result.probDesenlaceAdverso * 100).toStringAsFixed(1)}%)',
+                          style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w700,
+                            color: result.riesgoDesenlaceAdverso
+                                ? AppColors.riskHigh
+                                : AppColors.riskLow,
+                          ),
                         ),
                       ),
                     ],

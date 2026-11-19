@@ -39,50 +39,74 @@ class TriageResultPage extends StatelessWidget {
             if (provider.savedAssessment?.consultationCode
                 case final consultationCode?) ...[
               ConsultationCodeCard(code: consultationCode),
-              TextButton(
-                onPressed: () => Navigator.pop(context),
-                child: const Text('Volver al formulario'),
-              ),
-            ] else ...[
-              ElevatedButton.icon(
-                icon: const Icon(Icons.check_rounded, size: 20),
-                label: const Text('GUARDAR EN REGISTRO LOCAL'),
-                onPressed: () async {
-                  final success = await provider.saveCurrentAssessment();
-                  if (!context.mounted) return;
-                  if (success) {
-                    await context.read<HistoryProvider>().loadHistory();
-                  }
-                  if (!context.mounted) return;
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      behavior: SnackBarBehavior.floating,
-                      backgroundColor: success
-                          ? AppColors.primary
-                          : AppColors.riskHigh,
-                      content: Text(
-                        success
-                            ? 'Consulta registrada en base de datos local SQLite.'
-                            : 'Error al registrar consulta.',
-                      ),
-                    ),
-                  );
-                },
-              ),
-              const SizedBox(height: 8),
+              const SizedBox(height: 16),
             ],
-            if (provider.savedAssessment == null)
-              TextButton(
-                onPressed: () => Navigator.pop(context),
-                child: const Text(
-                  'Descartar y Volver al Formulario',
-                  style: TextStyle(
-                    color: AppColors.textSecondary,
-                    fontWeight: FontWeight.w600,
-                    fontSize: 13,
-                  ),
+            ElevatedButton.icon(
+              icon: provider.isSaving
+                  ? const SizedBox(
+                      width: 18,
+                      height: 18,
+                      child: CircularProgressIndicator(
+                        color: Colors.white,
+                        strokeWidth: 2,
+                      ),
+                    )
+                  : Icon(
+                      provider.isSaved
+                          ? Icons.check_circle_rounded
+                          : Icons.check_rounded,
+                      size: 20,
+                    ),
+              label: Text(
+                provider.isSaving
+                    ? 'GUARDANDO...'
+                    : provider.isSaved
+                    ? 'GUARDADO EN REGISTRO LOCAL'
+                    : 'GUARDAR EN REGISTRO LOCAL',
+              ),
+              onPressed: (provider.isSaving || provider.isSaved)
+                  ? null
+                  : () async {
+                      final success = await provider.saveCurrentAssessment();
+                      if (!context.mounted) return;
+                      if (success) {
+                        await context.read<HistoryProvider>().loadHistory();
+                      }
+                      if (!context.mounted) return;
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          behavior: SnackBarBehavior.floating,
+                          backgroundColor: success
+                              ? AppColors.primary
+                              : AppColors.riskHigh,
+                          content: Text(
+                            success
+                                ? 'Consulta registrada en base de datos local SQLite.'
+                                : 'Error al registrar consulta.',
+                          ),
+                        ),
+                      );
+                    },
+            ),
+            const SizedBox(height: 8),
+            TextButton(
+              onPressed: provider.isSaving
+                  ? null
+                  : () {
+                      if (Navigator.canPop(context)) {
+                        Navigator.pop(context, true);
+                      }
+                      provider.reset();
+                    },
+              child: const Text(
+                'Realizar Nueva Evaluación',
+                style: TextStyle(
+                  color: AppColors.textSecondary,
+                  fontWeight: FontWeight.w600,
+                  fontSize: 13,
                 ),
               ),
+            ),
             const SizedBox(height: 20),
           ],
         ),

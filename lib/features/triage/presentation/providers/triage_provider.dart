@@ -23,6 +23,9 @@ class TriageProvider extends ChangeNotifier {
   bool _isLoading = false;
   bool get isLoading => _isLoading;
 
+  bool _isSaving = false;
+  bool get isSaving => _isSaving;
+
   PatientAssessment? _currentPatient;
   PatientAssessment? get currentPatient => _currentPatient;
 
@@ -34,9 +37,11 @@ class TriageProvider extends ChangeNotifier {
 
   AssessmentRecord? _savedAssessment;
   AssessmentRecord? get savedAssessment => _savedAssessment;
+  bool get isSaved => _savedAssessment != null;
 
   Future<void> evaluate(PatientAssessment patient) async {
     _isLoading = true;
+    _isSaving = false;
     _errorMessage = null;
     _savedAssessment = null;
     notifyListeners();
@@ -53,6 +58,7 @@ class TriageProvider extends ChangeNotifier {
   }
 
   Future<bool> saveCurrentAssessment() async {
+    if (_isSaving) return false;
     if (_savedAssessment != null) return true;
     if (_currentPatient == null || _currentResult == null) return false;
     final ownerId = currentOwnerId();
@@ -62,20 +68,35 @@ class TriageProvider extends ChangeNotifier {
       return false;
     }
 
+    _isSaving = true;
+    _errorMessage = null;
+    notifyListeners();
+
     try {
       _savedAssessment = await _saveAssessment.execute(
         _currentPatient!,
         _currentResult!,
         ownerId: ownerId,
       );
-      notifyListeners();
       final savedCallback = onAssessmentSaved;
       if (savedCallback != null) unawaited(savedCallback());
       return true;
     } catch (e) {
       _errorMessage = 'Error al guardar en base local: $e';
-      notifyListeners();
       return false;
+    } finally {
+      _isSaving = false;
+      notifyListeners();
     }
+  }
+
+  void reset() {
+    _isLoading = false;
+    _isSaving = false;
+    _currentPatient = null;
+    _currentResult = null;
+    _savedAssessment = null;
+    _errorMessage = null;
+    notifyListeners();
   }
 }

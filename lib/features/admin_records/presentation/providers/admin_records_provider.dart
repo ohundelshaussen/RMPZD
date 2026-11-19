@@ -3,6 +3,8 @@ import 'dart:io';
 
 import 'package:flutter/foundation.dart';
 
+import '../../../../core/constants/colombia_locations.dart';
+import '../../../../core/constants/form_options.dart';
 import '../../../../core/network/connectivity_service.dart';
 import '../../domain/entities/remote_assessment.dart';
 import '../../domain/repositories/admin_records_repository.dart';
@@ -10,6 +12,11 @@ import '../../domain/usecases/get_admin_assessments_usecase.dart';
 
 class AdminRecordsProvider extends ChangeNotifier {
   static const int pageSize = 30;
+  static const Set<String> _baseRiskLevels = {
+    'Bajo Riesgo',
+    'Riesgo Moderado',
+    'Alto Riesgo Obstétrico',
+  };
 
   final GetAdminAssessmentsUseCase getAssessments;
   final ConnectivityService connectivityService;
@@ -21,6 +28,14 @@ class AdminRecordsProvider extends ChangeNotifier {
 
   final List<RemoteAssessment> _records = [];
   List<RemoteAssessment> get records => List.unmodifiable(_records);
+
+  final Set<String> _knownRiskLevels = {..._baseRiskLevels};
+  final Set<String> _knownDepartments = {...colombiaDepartments};
+  final Set<String> _knownMunicipalities = {
+    for (final list in municipalitiesByDepartment.values) ...list,
+  };
+  final Set<String> _knownEthnicities = {...ethnicities};
+  final Map<String, String> _knownDoctors = {};
 
   AdminAssessmentFilters _filters = const AdminAssessmentFilters();
   AdminAssessmentFilters get filters => _filters;
@@ -37,22 +52,34 @@ class AdminRecordsProvider extends ChangeNotifier {
   bool _hasMore = true;
   bool get hasMore => _hasMore;
 
-  Set<String> get riskLevels => _records
-      .map((record) => record.riskLevel)
-      .whereType<String>()
-      .toSet();
+  Set<String> get riskLevels => {
+    ..._knownRiskLevels,
+    for (final record in _records) ?record.riskLevel,
+    ?_filters.riskLevel,
+  };
 
-  Set<String> get departments => _records
-      .map((record) => record.department)
-      .whereType<String>()
-      .toSet();
+  Set<String> get departments => {
+    ..._knownDepartments,
+    for (final record in _records) ?record.department,
+    ?_filters.department,
+  };
+
+  Set<String> get municipalities => {
+    ..._knownMunicipalities,
+    for (final record in _records) ?record.municipality,
+  };
+
+  Set<String> get ethnicGroups => {..._knownEthnicities};
 
   Map<String, String> get doctors {
-    final result = <String, String>{};
+    final result = <String, String>{..._knownDoctors};
     for (final record in _records) {
       final id = record.doctorId;
       final name = record.doctorName;
       if (id != null && name != null) result[id] = name;
+    }
+    if (_filters.doctorId case final selectedId?) {
+      result.putIfAbsent(selectedId, () => selectedId);
     }
     return result;
   }
@@ -96,6 +123,22 @@ class AdminRecordsProvider extends ChangeNotifier {
         filters: _filters,
       );
       _records.addAll(page);
+      for (final record in page) {
+        if (record.riskLevel case final risk? when risk.trim().isNotEmpty) {
+          _knownRiskLevels.add(risk);
+        }
+        if (record.department case final dept? when dept.trim().isNotEmpty) {
+          _knownDepartments.add(dept);
+        }
+        if (record.municipality case final muni? when muni.trim().isNotEmpty) {
+          _knownMunicipalities.add(muni);
+        }
+        final id = record.doctorId;
+        final name = record.doctorName;
+        if (id != null && name != null) {
+          _knownDoctors[id] = name;
+        }
+      }
       _hasMore = page.length == pageSize;
       _errorMessage = null;
       _isOffline = false;

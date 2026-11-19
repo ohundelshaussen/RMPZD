@@ -141,6 +141,63 @@ void main() {
 
     expect(find.text('Triage Materno'), findsOneWidget);
     expect(find.text('EVALUAR RIESGO OBSTÉTRICO'), findsOneWidget);
+
+    await tester.enterText(
+      find.widgetWithText(TextFormField, 'Identificador / ID de Gestante'),
+      '   ',
+    );
+    await tester.ensureVisible(find.text('EVALUAR RIESGO OBSTÉTRICO'));
+    await tester.tap(find.text('EVALUAR RIESGO OBSTÉTRICO'));
+    await tester.pump();
+    expect(find.text('Requerido'), findsWidgets);
+  });
+
+  test('TriageProvider prevents duplicate saves and resets state cleanly', () async {
+    final repository = _FakeAssessmentRepository();
+    final provider = TriageProvider(
+      evaluateMaternalRisk: EvaluateMaternalRiskUseCase(_FakeRiskClassifier()),
+      saveAssessment: SaveAssessmentUseCase(repository),
+      currentOwnerId: () => 'test-user',
+    );
+
+    final patient = PatientAssessment(
+      patientId: 'GUA-100',
+      municipio: 'Riohacha',
+      departamento: 'La Guajira',
+      etnia: 'Wayuu',
+      zona: 'Rural dispersa',
+      edadMaterna: 25,
+      semanasGestacion: 30,
+      numeroControles: 4,
+      distanciaKm: 10,
+      tiempoTrasladoHoras: 1,
+      hemoglobina: 11.5,
+      presionSistolica: 115,
+      presionDiastolica: 75,
+      imc: 23.0,
+      antecedentePreeclampsia: false,
+      antecedenteDiabetes: false,
+      partoInstitucionalPrevio: true,
+      afiliacionSgsss: 'Subsidiado',
+      fechaEvaluacion: DateTime.utc(2026, 11, 19),
+    );
+
+    await provider.evaluate(patient);
+    expect(provider.currentResult, isNotNull);
+    expect(provider.isSaved, isFalse);
+
+    final firstSave = await provider.saveCurrentAssessment();
+    final secondSave = await provider.saveCurrentAssessment();
+    expect(firstSave, isTrue);
+    expect(secondSave, isTrue);
+    expect(repository.saveCalls, 1);
+    expect(provider.isSaved, isTrue);
+
+    provider.reset();
+    expect(provider.currentPatient, isNull);
+    expect(provider.currentResult, isNull);
+    expect(provider.savedAssessment, isNull);
+    expect(provider.isSaved, isFalse);
   });
 }
 
@@ -179,12 +236,23 @@ class _FakeAuthRepository implements AuthRepository {
 
 class _FakeRiskClassifier implements RiskClassifier {
   @override
-  Future<TriageResult> classify(PatientAssessment patient) {
-    throw UnimplementedError('The smoke test does not submit the form.');
+  Future<TriageResult> classify(PatientAssessment patient) async {
+    return const TriageResult(
+      riskLevel: RiskLevel.bajo,
+      probAlto: 0.1,
+      probMedio: 0.2,
+      probBajo: 0.7,
+      riesgoDesenlaceAdverso: false,
+      probDesenlaceAdverso: 0.1,
+      clinicalAlerts: [],
+      hasImmediateEmergency: false,
+    );
   }
 }
 
 class _FakeAssessmentRepository implements AssessmentRepository {
+  int saveCalls = 0;
+
   @override
   Future<List<AssessmentRecord>> getHistory({required String ownerId}) async =>
       [];
@@ -197,14 +265,17 @@ class _FakeAssessmentRepository implements AssessmentRepository {
     PatientAssessment patient,
     TriageResult result, {
     required String ownerId,
-  }) async => AssessmentRecord(
-    patient: patient,
-    result: result,
-    uuid: 'record-1',
-    ownerId: ownerId,
-    consultationCode: 'ABCD2345',
-    fechaGuardado: patient.fechaEvaluacion,
-  );
+  }) async {
+    saveCalls++;
+    return AssessmentRecord(
+      patient: patient,
+      result: result,
+      uuid: 'record-$saveCalls',
+      ownerId: ownerId,
+      consultationCode: 'ABCD2345',
+      fechaGuardado: patient.fechaEvaluacion,
+    );
+  }
 }
 
 class _FakePatientRecordsLookup implements PatientRecordsLookup {

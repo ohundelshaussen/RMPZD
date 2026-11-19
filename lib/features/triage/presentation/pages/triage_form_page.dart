@@ -81,12 +81,44 @@ class _TriageFormPageState extends State<TriageFormPage> {
       fechaEvaluacion: DateTime.now(),
     );
 
-    await context.read<TriageProvider>().evaluate(patient);
+    final triageProvider = context.read<TriageProvider>();
+    await triageProvider.evaluate(patient);
     if (!mounted) return;
-    await Navigator.push(
+    final shouldReset = await Navigator.push<bool>(
       context,
       MaterialPageRoute(builder: (_) => const TriageResultPage()),
     );
+    if (!mounted) return;
+    if (shouldReset == true ||
+        triageProvider.isSaved ||
+        triageProvider.currentResult == null) {
+      _resetForm();
+      triageProvider.reset();
+    }
+  }
+
+  void _resetForm() {
+    _formKey.currentState?.reset();
+    _idController.clear();
+    _edadController.clear();
+    _semanasController.clear();
+    _controlesController.clear();
+    _distanciaController.clear();
+    _tiempoController.clear();
+    _hemoglobinaController.clear();
+    _sistolicaController.clear();
+    _diastolicaController.clear();
+    _imcController.clear();
+    setState(() {
+      _departamento = 'La Guajira';
+      _municipio = 'Riohacha';
+      _etnia = 'Wayuu';
+      _zona = 'Rural dispersa';
+      _afiliacion = 'Subsidiado';
+      _antecedentePreeclampsia = false;
+      _antecedenteDiabetes = false;
+      _partoInstitucionalPrevio = false;
+    });
   }
 
   double _parseDouble(String value) {

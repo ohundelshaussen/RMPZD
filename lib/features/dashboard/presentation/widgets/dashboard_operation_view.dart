@@ -238,16 +238,17 @@ class _DashboardOperationViewState extends State<DashboardOperationView> {
         Icons.medical_services_outlined,
       ),
     ];
+    final textScale = MediaQuery.textScalerOf(context).scale(1.0).clamp(1.0, 1.6);
     return GridView.builder(
       key: const ValueKey('dashboard-kpis'),
       shrinkWrap: true,
       physics: const NeverScrollableScrollPhysics(),
       itemCount: kpis.length,
-      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+      gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
         crossAxisCount: 2,
         crossAxisSpacing: 8,
         mainAxisSpacing: 8,
-        childAspectRatio: 1.2,
+        mainAxisExtent: 124 * textScale,
       ),
       itemBuilder: (context, index) {
         final item = kpis[index];
@@ -269,18 +270,22 @@ class _DashboardOperationViewState extends State<DashboardOperationView> {
                     color: AppColors.textPrimary,
                   ),
                 ),
-                Text(
-                  item.title,
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                    fontSize: 11,
-                    color: AppColors.textSecondary,
+                Flexible(
+                  child: Text(
+                    item.title,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      fontSize: 11,
+                      color: AppColors.textSecondary,
+                    ),
                   ),
                 ),
                 if (item.subtitle != null)
                   Text(
                     item.subtitle!,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
                     style: const TextStyle(
                       fontSize: 10,
                       color: AppColors.textMuted,
