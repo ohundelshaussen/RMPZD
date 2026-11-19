@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/foundation.dart';
 import '../../domain/entities/patient_assessment.dart';
 import '../../domain/entities/triage_result.dart';
+import '../../domain/entities/assessment_record.dart';
 import '../../domain/usecases/evaluate_maternal_risk_usecase.dart';
 import '../../domain/usecases/save_assessment_usecase.dart';
 
@@ -31,9 +32,13 @@ class TriageProvider extends ChangeNotifier {
   String? _errorMessage;
   String? get errorMessage => _errorMessage;
 
+  AssessmentRecord? _savedAssessment;
+  AssessmentRecord? get savedAssessment => _savedAssessment;
+
   Future<void> evaluate(PatientAssessment patient) async {
     _isLoading = true;
     _errorMessage = null;
+    _savedAssessment = null;
     notifyListeners();
 
     try {
@@ -48,6 +53,7 @@ class TriageProvider extends ChangeNotifier {
   }
 
   Future<bool> saveCurrentAssessment() async {
+    if (_savedAssessment != null) return true;
     if (_currentPatient == null || _currentResult == null) return false;
     final ownerId = currentOwnerId();
     if (ownerId == null) {
@@ -57,11 +63,12 @@ class TriageProvider extends ChangeNotifier {
     }
 
     try {
-      await _saveAssessment.execute(
+      _savedAssessment = await _saveAssessment.execute(
         _currentPatient!,
         _currentResult!,
         ownerId: ownerId,
       );
+      notifyListeners();
       final savedCallback = onAssessmentSaved;
       if (savedCallback != null) unawaited(savedCallback());
       return true;

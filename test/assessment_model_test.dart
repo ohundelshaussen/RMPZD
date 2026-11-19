@@ -53,6 +53,7 @@ void main() {
         uuid: '97c76ec7-9228-4de0-88c3-f2efee432939',
         ownerId: 'doctor-1',
         syncStatus: SyncStatus.synced,
+        consultationCode: 'ABCD-2345',
         fechaGuardado: date,
       );
 
@@ -101,9 +102,11 @@ void main() {
           'last_sync_error',
           'sync_attempts',
           'updated_at',
+          'codigo_consulta',
         ]),
       );
-      expect(row, hasLength(32));
+      expect(row, hasLength(33));
+      expect(row['codigo_consulta'], 'ABCD2345');
       expect(model.toJson(), row);
       expect(restored.idLocal, 42);
       expect(restoredModel.syncAttempts, 2);
@@ -111,6 +114,7 @@ void main() {
       expect(restored.patient.patientId, 'MP-TEST');
       expect(restored.patient.presionSistolica, 120);
       expect(restored.fechaGuardado, date);
+      expect(restored.consultationCode, 'ABCD2345');
       expect(restored.isSynced, isTrue);
       expect(restored.result.riskLevel, RiskLevel.alto);
       expect(restored.result.probAlto, 0.6);
@@ -158,6 +162,7 @@ void main() {
       ),
       uuid: '97c76ec7-9228-4de0-88c3-f2efee432939',
       ownerId: 'doctor-1',
+      consultationCode: 'ABCD-2345',
       fechaGuardado: date,
     );
 
@@ -170,6 +175,7 @@ void main() {
     expect(payload['parto_institucional_previo'], isTrue);
     expect(payload['alerta_clinica_inmediata'], isFalse);
     expect(payload['fecha_evaluacion'], '2026-11-11T20:00:00.000Z');
+    expect(payload['codigo_consulta'], 'ABCD2345');
     expect(
       payload.keys,
       isNot(
@@ -184,6 +190,6 @@ void main() {
         ),
       ),
     );
-    expect(payload, hasLength(26));
+    expect(payload, hasLength(27));
   });
 }

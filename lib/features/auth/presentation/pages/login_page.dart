@@ -24,10 +24,13 @@ class _LoginPageState extends State<LoginPage> {
 
   Future<void> _submit() async {
     if (!_formKey.currentState!.validate()) return;
-    await context.read<AuthProvider>().signIn(
+    final success = await context.read<AuthProvider>().signIn(
       _emailController.text,
       _passwordController.text,
     );
+    if (success && mounted) {
+      Navigator.of(context).popUntil((route) => route.isFirst);
+    }
   }
 
   @override
@@ -108,6 +111,14 @@ class _LoginPageState extends State<LoginPage> {
                             ),
                           )
                         : const Text('INICIAR SESIÓN'),
+                  ),
+                  TextButton(
+                    onPressed: () {
+                      if (Navigator.of(context).canPop()) {
+                        Navigator.of(context).pop();
+                      }
+                    },
+                    child: const Text('Volver a la consulta'),
                   ),
                 ],
               ),

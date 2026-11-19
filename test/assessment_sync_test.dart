@@ -46,6 +46,46 @@ void main() {
     },
   );
 
+  test('migrates version 2 rows and preserves them without a consultation code', () async {
+    final db = await databaseFactoryFfi.openDatabase(inMemoryDatabasePath);
+    addTearDown(db.close);
+    await DatabaseHelper.createV2Schema(db);
+    await db.insert('assessments', {
+      'patient_id': 'legacy',
+      'municipio': 'Valledupar',
+      'departamento': 'Cesar',
+      'etnia': 'No Indígena',
+      'zona': 'Urbana',
+      'edad_materna': 24,
+      'semanas_gestacion': 28,
+      'numero_controles': 3,
+      'distancia_km': 18.5,
+      'tiempo_traslado_horas': 1.8,
+      'hemoglobina': 11.2,
+      'presion_sistolica': 120,
+      'presion_diastolica': 75,
+      'imc': 25.4,
+      'antecedente_preeclampsia': 0,
+      'antecedente_diabetes': 0,
+      'parto_institucional_previo': 1,
+      'afiliacion_sgsss': 'Subsidiado',
+      'fecha_evaluacion': '2026-11-11T00:00:00.000',
+      'nivel_riesgo_predicho': 'Bajo Riesgo',
+      'probabilidad_riesgo_alto': 0.1,
+      'alerta_clinica_inmediata': 0,
+      'probabilidad_desenlace_adverso': 0.1,
+      'uuid': 'legacy-uuid',
+    });
+
+    await DatabaseHelper.migrateV2ToV3(db);
+
+    final rows = await db.query(
+      'assessments',
+      columns: ['patient_id', 'codigo_consulta'],
+    );
+    expect(rows.single, {'patient_id': 'legacy', 'codigo_consulta': null});
+  });
+
   test('history and pending counts are scoped to the current owner', () async {
     final (database, _, local, repository) = await _createLocalStore();
     addTearDown(database.close);
@@ -79,6 +119,10 @@ void main() {
       firstOwnerHistory.map((record) => record.patient.patientId),
       containsAll(['one', 'legacy']),
     );
+    final savedRecord = firstOwnerHistory.singleWhere(
+      (record) => record.patient.patientId == 'one',
+    );
+    expect(savedRecord.consultationCode, matches(r'^[ABCDEFGHJKLMNPQRSTUVWXYZ23456789]{8}$'));
     expect(await repository.getUnsyncedCount(ownerId: 'doctor-1'), 2);
     expect(await local.getUnsyncedCount('doctor-2'), 1);
     final legacyRow = await database.query(
@@ -251,8 +295,8 @@ _createLocalStore() async {
   final database = await databaseFactoryFfi.openDatabase(
     inMemoryDatabasePath,
     options: OpenDatabaseOptions(
-      version: 2,
-      onCreate: (db, version) => DatabaseHelper.createV2Schema(db),
+      version: 3,
+      onCreate: (db, version) => DatabaseHelper.createV3Schema(db),
     ),
   );
   final helper = DatabaseHelper.forDatabase(database);

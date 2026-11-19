@@ -24,6 +24,9 @@ import 'package:rmpzd/features/dashboard/domain/repositories/dashboard_repositor
 import 'package:rmpzd/features/dashboard/domain/usecases/get_dashboard_stats_usecase.dart';
 import 'package:rmpzd/features/dashboard/presentation/providers/dashboard_provider.dart';
 import 'package:rmpzd/features/history/presentation/providers/history_provider.dart';
+import 'package:rmpzd/features/patient_portal/data/datasources/patient_portal_remote_data_source.dart';
+import 'package:rmpzd/features/patient_portal/domain/usecases/lookup_patient_records_usecase.dart';
+import 'package:rmpzd/features/patient_portal/presentation/providers/patient_portal_provider.dart';
 import 'package:rmpzd/features/triage/data/datasources/ai_inference_engine.dart';
 import 'package:rmpzd/features/triage/data/datasources/assessment_local_datasource.dart';
 import 'package:rmpzd/features/triage/data/datasources/assessment_remote_datasource.dart';
@@ -54,6 +57,9 @@ void main() {
             builder: (context) {
               final providers = <Object>[
                 context.read<ConnectivityService>(),
+                context.read<PatientPortalRemoteDataSource>(),
+                context.read<LookupPatientRecordsUseCase>(),
+                context.read<PatientPortalProvider>(),
                 context.read<NetworkStatusDataSource>(),
                 context.read<AuthRemoteDataSource>(),
                 context.read<AuthLocalDataSource>(),
@@ -87,7 +93,7 @@ void main() {
                 context.read<SyncProvider>(),
                 context.read<TriageProvider>(),
               ];
-              expect(providers, hasLength(33));
+              expect(providers, hasLength(36));
               return const SizedBox();
             },
           ),

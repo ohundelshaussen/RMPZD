@@ -32,9 +32,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 void main() {
   setUpAll(sqfliteFfiInit);
 
-  testWidgets('sync completion reloads history and updates record status', (
-    tester,
-  ) async {
+  test('sync completion reloads history and updates record status', () async {
     final fixture = await _createFixture();
     addTearDown(fixture.database.close);
     await fixture.repository.saveAssessment(
@@ -59,25 +57,10 @@ void main() {
     addTearDown(syncProvider.dispose);
     addTearDown(historyProvider.dispose);
 
-    await tester.pumpWidget(
-      MultiProvider(
-        providers: [
-          ChangeNotifierProvider<HistoryProvider>.value(value: historyProvider),
-          ChangeNotifierProvider<SyncProvider>.value(value: syncProvider),
-        ],
-        child: const Directionality(
-          textDirection: TextDirection.ltr,
-          child: SizedBox(),
-        ),
-      ),
-    );
-
     await authProvider.signIn('doctor@example.test', 'password');
-    await tester.runAsync(() async {
-      await historyProvider.loadCompleted.future.timeout(
-        const Duration(seconds: 2),
-      );
-    });
+    await historyProvider.loadCompleted.future.timeout(
+      const Duration(seconds: 2),
+    );
 
     expect(historyProvider.loadCalls, greaterThan(0));
     expect(historyProvider.history, hasLength(1));
@@ -184,8 +167,8 @@ Future<_Fixture> _createFixture() async {
   final database = await databaseFactoryFfi.openDatabase(
     inMemoryDatabasePath,
     options: OpenDatabaseOptions(
-      version: 2,
-      onCreate: (db, version) => DatabaseHelper.createV2Schema(db),
+      version: 3,
+      onCreate: (db, version) => DatabaseHelper.createV3Schema(db),
     ),
   );
   final local = AssessmentLocalDataSource(

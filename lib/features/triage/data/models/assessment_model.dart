@@ -56,6 +56,7 @@ class AssessmentModel {
       'updated_at': (updatedAt ?? record.fechaGuardado)
           .toUtc()
           .toIso8601String(),
+      'codigo_consulta': record.consultationCode?.replaceAll('-', ''),
     };
   }
 
@@ -93,6 +94,7 @@ class AssessmentModel {
           ? result.clinicalAlerts.map((alert) => alert.title).join(' | ')
           : null,
       'probabilidad_desenlace_adverso': result.probDesenlaceAdverso,
+      'codigo_consulta': record.consultationCode?.replaceAll('-', ''),
     };
   }
 
@@ -179,6 +181,7 @@ class AssessmentModel {
           orElse: () => SyncStatus.pending,
         ),
         lastSyncError: map['last_sync_error'] as String?,
+        consultationCode: map['codigo_consulta'] as String?,
         fechaGuardado: fechaGuardado,
       ),
     );

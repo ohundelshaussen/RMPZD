@@ -7,7 +7,7 @@ import 'package:sqflite_common_ffi/sqflite_ffi.dart'
     show sqfliteFfiInit, databaseFactoryFfi;
 
 class DatabaseHelper {
-  static const String _createAssessmentsTable = '''
+  static String _createAssessmentsTable({required bool withConsultationCode}) => '''
     CREATE TABLE assessments (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       patient_id TEXT NOT NULL,
@@ -40,7 +40,7 @@ class DatabaseHelper {
       sync_status TEXT NOT NULL DEFAULT 'pending',
       last_sync_error TEXT,
       sync_attempts INTEGER NOT NULL DEFAULT 0,
-      updated_at TEXT
+      updated_at TEXT${withConsultationCode ? ',\n      codigo_consulta TEXT' : ''}
     )
   ''';
 
@@ -73,19 +73,27 @@ class DatabaseHelper {
 
     return await openDatabase(
       path,
-      version: 2,
+      version: 3,
       onCreate: _createDB,
       onUpgrade: _onUpgrade,
     );
   }
 
   Future<void> _createDB(Database db, int version) async {
-    await createV2Schema(db);
+    await createV3Schema(db);
   }
 
   @visibleForTesting
   static Future<void> createV2Schema(DatabaseExecutor db) async {
-    await db.execute(_createAssessmentsTable);
+    await db.execute(_createAssessmentsTable(withConsultationCode: false));
+    await db.execute(
+      'CREATE UNIQUE INDEX idx_assessments_uuid ON assessments(uuid)',
+    );
+  }
+
+  @visibleForTesting
+  static Future<void> createV3Schema(DatabaseExecutor db) async {
+    await db.execute(_createAssessmentsTable(withConsultationCode: true));
     await db.execute(
       'CREATE UNIQUE INDEX idx_assessments_uuid ON assessments(uuid)',
     );
@@ -97,8 +105,16 @@ class DatabaseHelper {
         case 1:
           await migrateV1ToV2(db);
           break;
+        case 2:
+          await migrateV2ToV3(db);
+          break;
       }
     }
+  }
+
+  @visibleForTesting
+  static Future<void> migrateV2ToV3(DatabaseExecutor db) async {
+    await db.execute('ALTER TABLE assessments ADD COLUMN codigo_consulta TEXT');
   }
 
   @visibleForTesting
