@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../../auth/presentation/widgets/account_menu_button.dart';
 import 'academic_dashboard_page.dart';
 import '../widgets/dashboard_operation_view.dart';
 
@@ -13,6 +14,7 @@ class AdminDashboardPage extends StatelessWidget {
       child: Scaffold(
         appBar: AppBar(
           title: const Text('Dashboard'),
+          actions: const [AccountMenuButton()],
           bottom: const TabBar(
             tabs: [
               Tab(text: 'Operación'),

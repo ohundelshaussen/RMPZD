@@ -101,9 +101,12 @@ class _PatientRecordDetailPageState extends State<PatientRecordDetailPage> {
           ),
         ),
         body: SafeArea(
-          child: ListView(
-            padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
-            children: [
+          child: Center(
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 640),
+              child: ListView(
+                padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
+                children: [
               _RiskPanel(record: widget.record),
               if (widget.record.alertaClinicaInmediata == true) ...[
                 const SizedBox(height: 12),
@@ -241,11 +244,13 @@ class _PatientRecordDetailPageState extends State<PatientRecordDetailPage> {
                   _isGeneratingPdf ? 'Generando PDF…' : 'Descargar PDF',
                 ),
               ),
-              OutlinedButton(
-                onPressed: _finishConsultation,
-                child: const Text('Terminar consulta'),
+                  OutlinedButton(
+                    onPressed: _finishConsultation,
+                    child: const Text('Terminar consulta'),
+                  ),
+                ],
               ),
-            ],
+            ),
           ),
         ),
       ),
@@ -383,19 +388,31 @@ class _DetailItem extends StatelessWidget {
   const _DetailItem({required this.value});
 
   @override
-  Widget build(BuildContext context) => Column(
+  Widget build(BuildContext context) => Row(
     crossAxisAlignment: CrossAxisAlignment.start,
     children: [
-      Text(
-        value.label,
-        style: const TextStyle(
-          fontSize: 12,
-          color: AppColors.textSecondary,
-          fontWeight: FontWeight.w600,
+      Expanded(
+        child: Text(
+          value.label,
+          style: const TextStyle(
+            fontSize: 12,
+            color: AppColors.textSecondary,
+            fontWeight: FontWeight.w600,
+          ),
         ),
       ),
-      const SizedBox(height: 2),
-      Text(value.value, softWrap: true),
+      const SizedBox(width: 12),
+      Flexible(
+        child: Text(
+          value.value,
+          textAlign: TextAlign.end,
+          softWrap: true,
+          style: const TextStyle(
+            fontWeight: FontWeight.w600,
+            color: AppColors.textPrimary,
+          ),
+        ),
+      ),
     ],
   );
 }

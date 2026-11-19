@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import '../../../../core/constants/app_colors.dart';
 import '../../../../core/constants/colombia_locations.dart';
+import '../../../auth/presentation/widgets/account_menu_button.dart';
 import '../../domain/entities/patient_assessment.dart';
 import '../providers/triage_provider.dart';
 import '../widgets/clinical_history_section.dart';
@@ -130,102 +130,100 @@ class _TriageFormPageState extends State<TriageFormPage> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Triage Materno'),
-        actions: const [
-          Padding(
-            padding: EdgeInsets.only(right: 16),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Icon(Icons.bolt_rounded, size: 16, color: AppColors.primary),
-                SizedBox(width: 4),
-                Text(
-                  'Offline IA',
-                  style: TextStyle(
-                    fontSize: 11,
-                    fontWeight: FontWeight.w700,
-                    color: AppColors.primary,
-                  ),
-                ),
-              ],
-            ),
+        actions: [
+          IconButton(
+            tooltip: 'Limpiar formulario',
+            icon: const Icon(Icons.refresh_rounded),
+            onPressed: _resetForm,
           ),
+          const AccountMenuButton(),
         ],
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-        child: Form(
-          key: _formKey,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              TerritorySection(
-                patientIdController: _idController,
-                department: _departamento,
-                municipality: _municipio,
-                ethnicity: _etnia,
-                zone: _zona,
-                affiliation: _afiliacion,
-                onDepartmentChanged: (department) {
-                  setState(() {
-                    _departamento = department;
-                    _municipio = municipalitiesByDepartment[department]!.first;
-                  });
-                },
-                onMunicipalityChanged: (value) =>
-                    setState(() => _municipio = value),
-                onEthnicityChanged: (value) => setState(() => _etnia = value),
-                onZoneChanged: (value) => setState(() => _zona = value),
-                onAffiliationChanged: (value) =>
-                    setState(() => _afiliacion = value),
+        child: Center(
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 720),
+            child: Form(
+              key: _formKey,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  TerritorySection(
+                    patientIdController: _idController,
+                    department: _departamento,
+                    municipality: _municipio,
+                    ethnicity: _etnia,
+                    zone: _zona,
+                    affiliation: _afiliacion,
+                    onDepartmentChanged: (department) {
+                      setState(() {
+                        _departamento = department;
+                        _municipio =
+                            municipalitiesByDepartment[department]!.first;
+                      });
+                    },
+                    onMunicipalityChanged: (value) =>
+                        setState(() => _municipio = value),
+                    onEthnicityChanged: (value) =>
+                        setState(() => _etnia = value),
+                    onZoneChanged: (value) => setState(() => _zona = value),
+                    onAffiliationChanged: (value) =>
+                        setState(() => _afiliacion = value),
+                  ),
+                  VitalSignsSection(
+                    systolicController: _sistolicaController,
+                    diastolicController: _diastolicaController,
+                    hemoglobinController: _hemoglobinaController,
+                    bmiController: _imcController,
+                  ),
+                  GestationAccessSection(
+                    ageController: _edadController,
+                    weeksController: _semanasController,
+                    visitsController: _controlesController,
+                    distanceController: _distanciaController,
+                    travelTimeController: _tiempoController,
+                  ),
+                  ClinicalHistorySection(
+                    preeclampsia: _antecedentePreeclampsia,
+                    diabetes: _antecedenteDiabetes,
+                    institutionalBirth: _partoInstitucionalPrevio,
+                    onPreeclampsiaChanged: (value) =>
+                        setState(() => _antecedentePreeclampsia = value),
+                    onDiabetesChanged: (value) =>
+                        setState(() => _antecedenteDiabetes = value),
+                    onInstitutionalBirthChanged: (value) =>
+                        setState(() => _partoInstitucionalPrevio = value),
+                  ),
+                  Consumer<TriageProvider>(
+                    builder: (context, provider, _) {
+                      return ElevatedButton.icon(
+                        icon: provider.isLoading
+                            ? const SizedBox(
+                                width: 18,
+                                height: 18,
+                                child: CircularProgressIndicator(
+                                  color: Colors.white,
+                                  strokeWidth: 2,
+                                ),
+                              )
+                            : const Icon(
+                                Icons.health_and_safety_rounded,
+                                size: 20,
+                              ),
+                        label: Text(
+                          provider.isLoading
+                              ? 'Evaluando...'
+                              : 'EVALUAR RIESGO OBSTÉTRICO',
+                        ),
+                        onPressed: provider.isLoading ? null : _submitForm,
+                      );
+                    },
+                  ),
+                  const SizedBox(height: 24),
+                ],
               ),
-              VitalSignsSection(
-                systolicController: _sistolicaController,
-                diastolicController: _diastolicaController,
-                hemoglobinController: _hemoglobinaController,
-                bmiController: _imcController,
-              ),
-              GestationAccessSection(
-                ageController: _edadController,
-                weeksController: _semanasController,
-                visitsController: _controlesController,
-                distanceController: _distanciaController,
-                travelTimeController: _tiempoController,
-              ),
-              ClinicalHistorySection(
-                preeclampsia: _antecedentePreeclampsia,
-                diabetes: _antecedenteDiabetes,
-                institutionalBirth: _partoInstitucionalPrevio,
-                onPreeclampsiaChanged: (value) =>
-                    setState(() => _antecedentePreeclampsia = value),
-                onDiabetesChanged: (value) =>
-                    setState(() => _antecedenteDiabetes = value),
-                onInstitutionalBirthChanged: (value) =>
-                    setState(() => _partoInstitucionalPrevio = value),
-              ),
-              Consumer<TriageProvider>(
-                builder: (context, provider, _) {
-                  return ElevatedButton.icon(
-                    icon: provider.isLoading
-                        ? const SizedBox(
-                            width: 18,
-                            height: 18,
-                            child: CircularProgressIndicator(
-                              color: Colors.white,
-                              strokeWidth: 2,
-                            ),
-                          )
-                        : const Icon(Icons.health_and_safety_rounded, size: 20),
-                    label: Text(
-                      provider.isLoading
-                          ? 'Evaluando...'
-                          : 'EVALUAR RIESGO OBSTÉTRICO',
-                    ),
-                    onPressed: provider.isLoading ? null : _submitForm,
-                  );
-                },
-              ),
-              const SizedBox(height: 24),
-            ],
+            ),
           ),
         ),
       ),

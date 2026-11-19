@@ -13,7 +13,9 @@ const _privacyNote =
     'de este dispositivo al terminar.';
 
 class PatientLookupPage extends StatefulWidget {
-  const PatientLookupPage({super.key});
+  final VoidCallback? onOpenStaffLogin;
+
+  const PatientLookupPage({this.onOpenStaffLogin, super.key});
 
   @override
   State<PatientLookupPage> createState() => _PatientLookupPageState();
@@ -94,6 +96,11 @@ class _PatientLookupPageState extends State<PatientLookupPage> {
   Future<void> _openStaffLogin() async {
     _clearConsultation();
     _provider?.recordActivity();
+    final onOpenStaffLogin = widget.onOpenStaffLogin;
+    if (onOpenStaffLogin != null) {
+      onOpenStaffLogin();
+      return;
+    }
     await Navigator.of(
       context,
     ).push(MaterialPageRoute<void>(builder: (_) => const LoginPage()));
@@ -111,119 +118,238 @@ class _PatientLookupPageState extends State<PatientLookupPage> {
           actions: [
             Padding(
               padding: const EdgeInsets.only(right: 12),
-              child: IconButton.filled(
-                tooltip: 'Acceso para personal de salud',
-                onPressed: _openStaffLogin,
-                icon: const Icon(Icons.login_rounded),
-                style: IconButton.styleFrom(
-                  backgroundColor: AppColors.primary,
-                  foregroundColor: Colors.white,
-                  minimumSize: const Size(48, 48),
+              child: Tooltip(
+                message: 'Acceso para personal de salud',
+                child: FilledButton.tonalIcon(
+                  onPressed: _openStaffLogin,
+                  icon: const Icon(Icons.login_rounded, size: 18),
+                  label: const Text('Personal de salud'),
+                  style: FilledButton.styleFrom(
+                    backgroundColor: AppColors.primary.withValues(alpha: 0.12),
+                    foregroundColor: AppColors.primary,
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 8,
+                    ),
+                  ),
                 ),
               ),
             ),
           ],
         ),
         body: SafeArea(
-          child: Form(
-            key: _formKey,
-            child: ListView(
-              padding: const EdgeInsets.fromLTRB(20, 12, 20, 24),
-              children: [
-                const Icon(
-                  Icons.health_and_safety_rounded,
-                  size: 56,
-                  color: AppColors.primary,
-                  semanticLabel: 'Logo RMPZD',
+          child: Center(
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 460),
+              child: Form(
+                key: _formKey,
+                child: ListView(
+                  padding: const EdgeInsets.fromLTRB(20, 8, 20, 16),
+                  children: [
+                    const Icon(
+                      Icons.health_and_safety_rounded,
+                      size: 42,
+                      color: AppColors.primary,
+                      semanticLabel: 'Logo RMPZD',
+                    ),
+                    const SizedBox(height: 4),
+                    const Text(
+                      'RMPZD',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        fontSize: 22,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Container(
+                      padding: const EdgeInsets.all(3),
+                      decoration: BoxDecoration(
+                        color: AppColors.surfaceVariant,
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: AppColors.border),
+                      ),
+                      child: Row(
+                        children: [
+                          Expanded(
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(
+                                vertical: 7,
+                                horizontal: 8,
+                              ),
+                              decoration: BoxDecoration(
+                                color: AppColors.surface,
+                                borderRadius: BorderRadius.circular(9),
+                                border: Border.all(
+                                  color: AppColors.primary.withValues(
+                                    alpha: 0.25,
+                                  ),
+                                ),
+                              ),
+                              child: const Row(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  Icon(
+                                    Icons.person_search_rounded,
+                                    size: 16,
+                                    color: AppColors.primary,
+                                  ),
+                                  SizedBox(width: 6),
+                                  Flexible(
+                                    child: Text(
+                                      'Soy Paciente',
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: TextStyle(
+                                        fontSize: 13,
+                                        fontWeight: FontWeight.w700,
+                                        color: AppColors.primary,
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 4),
+                          Expanded(
+                            child: InkWell(
+                              borderRadius: BorderRadius.circular(9),
+                              onTap: _openStaffLogin,
+                              child: const Padding(
+                                padding: EdgeInsets.symmetric(
+                                  vertical: 7,
+                                  horizontal: 8,
+                                ),
+                                child: Row(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    Icon(
+                                      Icons.medical_services_outlined,
+                                      size: 16,
+                                      color: AppColors.textSecondary,
+                                    ),
+                                    SizedBox(width: 6),
+                                    Flexible(
+                                      child: Text(
+                                        'Personal de Salud',
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
+                                        style: TextStyle(
+                                          fontSize: 13,
+                                          fontWeight: FontWeight.w600,
+                                          color: AppColors.textSecondary,
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    const Text(
+                      'Consulte su resultado con su número de ID y el código que '
+                      'le entregó su médico',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        fontSize: 13,
+                        color: AppColors.textSecondary,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    const Text(
+                      'La consulta de resultados requiere una conexión activa a internet.',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: AppColors.textSecondary,
+                      ),
+                    ),
+                    const SizedBox(height: 10),
+                    Card(
+                      child: Padding(
+                        padding: const EdgeInsets.all(14),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            TextFormField(
+                              controller: _documentController,
+                              textCapitalization: TextCapitalization.characters,
+                              autocorrect: false,
+                              enableSuggestions: false,
+                              inputFormatters: [const _UpperCaseTextFormatter()],
+                              decoration: const InputDecoration(
+                                labelText: 'Número de documento / ID',
+                                prefixIcon: Icon(Icons.badge_outlined),
+                              ),
+                              validator: (value) =>
+                                  value == null || value.trim().isEmpty
+                                  ? 'Ingrese su número de documento / ID.'
+                                  : null,
+                              onChanged: (_) => provider.recordActivity(),
+                            ),
+                            const SizedBox(height: 10),
+                            TextFormField(
+                              controller: _codeController,
+                              textCapitalization: TextCapitalization.characters,
+                              autocorrect: false,
+                              enableSuggestions: false,
+                              inputFormatters: [const _UpperCaseTextFormatter()],
+                              decoration: const InputDecoration(
+                                labelText: 'Código de consulta',
+                                hintText: 'XXXX-XXXX',
+                                prefixIcon: Icon(Icons.key_rounded),
+                              ),
+                              validator: (value) {
+                                if (!RegExp(
+                                  r'^(?:[ABCDEFGHJKLMNPQRSTUVWXYZ23456789]{8}|'
+                                  r'[ABCDEFGHJKLMNPQRSTUVWXYZ23456789]{4}-'
+                                  r'[ABCDEFGHJKLMNPQRSTUVWXYZ23456789]{4})$',
+                                ).hasMatch((value ?? '').trim().toUpperCase())) {
+                                  return 'Ingrese el código de 8 caracteres.';
+                                }
+                                return null;
+                              },
+                              onChanged: (_) => provider.recordActivity(),
+                            ),
+                            const SizedBox(height: 12),
+                            FilledButton(
+                              onPressed: provider.isLoading ? null : _submit,
+                              child: provider.isLoading
+                                  ? const SizedBox(
+                                      width: 22,
+                                      height: 22,
+                                      child: CircularProgressIndicator(
+                                        strokeWidth: 2,
+                                      ),
+                                    )
+                                  : const Text('Consultar'),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                    if (provider.result case final result?
+                        when result is! PatientRecordFound) ...[
+                      const SizedBox(height: 10),
+                      _ErrorMessage(_errorMessage(result)),
+                    ],
+                    const SizedBox(height: 8),
+                    const Text(
+                      _privacyNote,
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: AppColors.textSecondary,
+                      ),
+                    ),
+                  ],
                 ),
-                const SizedBox(height: 8),
-                const Text(
-                  'RMPZD',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(fontSize: 24, fontWeight: FontWeight.w800),
-                ),
-                const SizedBox(height: 8),
-                const Text(
-                  'Consulte su resultado con su número de ID y el código que '
-                  'le entregó su médico',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(color: AppColors.textSecondary),
-                ),
-                const SizedBox(height: 6),
-                const Text(
-                  'La consulta de resultados requiere una conexión activa a internet.',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(
-                    fontSize: 12,
-                    color: AppColors.textSecondary,
-                  ),
-                ),
-                const SizedBox(height: 24),
-                TextFormField(
-                  controller: _documentController,
-                  textCapitalization: TextCapitalization.characters,
-                  autocorrect: false,
-                  enableSuggestions: false,
-                  inputFormatters: [const _UpperCaseTextFormatter()],
-                  decoration: const InputDecoration(
-                    labelText: 'Número de documento / ID',
-                    prefixIcon: Icon(Icons.badge_outlined),
-                  ),
-                  validator: (value) => value == null || value.trim().isEmpty
-                      ? 'Ingrese su número de documento / ID.'
-                      : null,
-                  onChanged: (_) => provider.recordActivity(),
-                ),
-                const SizedBox(height: 14),
-                TextFormField(
-                  controller: _codeController,
-                  textCapitalization: TextCapitalization.characters,
-                  autocorrect: false,
-                  enableSuggestions: false,
-                  inputFormatters: [const _UpperCaseTextFormatter()],
-                  decoration: const InputDecoration(
-                    labelText: 'Código de consulta',
-                    hintText: 'XXXX-XXXX',
-                    prefixIcon: Icon(Icons.key_rounded),
-                  ),
-                  validator: (value) {
-                    if (!RegExp(
-                      r'^(?:[ABCDEFGHJKLMNPQRSTUVWXYZ23456789]{8}|'
-                      r'[ABCDEFGHJKLMNPQRSTUVWXYZ23456789]{4}-'
-                      r'[ABCDEFGHJKLMNPQRSTUVWXYZ23456789]{4})$',
-                    ).hasMatch((value ?? '').trim().toUpperCase())) {
-                      return 'Ingrese el código de 8 caracteres.';
-                    }
-                    return null;
-                  },
-                  onChanged: (_) => provider.recordActivity(),
-                ),
-                const SizedBox(height: 18),
-                FilledButton(
-                  onPressed: provider.isLoading ? null : _submit,
-                  child: provider.isLoading
-                      ? const SizedBox(
-                          width: 22,
-                          height: 22,
-                          child: CircularProgressIndicator(strokeWidth: 2),
-                        )
-                      : const Text('Consultar'),
-                ),
-                const SizedBox(height: 12),
-                const Text(
-                  _privacyNote,
-                  textAlign: TextAlign.center,
-                  style: TextStyle(
-                    fontSize: 12,
-                    color: AppColors.textSecondary,
-                  ),
-                ),
-                if (provider.result case final result?
-                    when result is! PatientRecordFound) ...[
-                  const SizedBox(height: 20),
-                  _ErrorMessage(_errorMessage(result)),
-                ],
-              ],
+              ),
             ),
           ),
         ),

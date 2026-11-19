@@ -2,10 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../../../core/constants/app_colors.dart';
 import '../../../../core/sync/sync_provider.dart';
-import '../../../auth/domain/entities/user_profile.dart';
-import '../../../auth/presentation/providers/auth_provider.dart';
+import '../../../auth/presentation/widgets/account_menu_button.dart';
 import '../../../triage/domain/entities/assessment_record.dart';
-import '../../../triage/domain/usecases/get_unsynced_count_usecase.dart';
 import '../../../triage/presentation/widgets/consultation_code_card.dart';
 import '../providers/history_provider.dart';
 
@@ -25,121 +23,16 @@ class _HistoryPageState extends State<HistoryPage> {
     });
   }
 
-  Future<void> _signOut() async {
-    if (context.read<SyncProvider>().isSyncing) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text(
-            'Espera a que termine la sincronización para cerrar sesión.',
-          ),
-        ),
-      );
-      return;
-    }
-    final profile = context.read<AuthProvider>().profile;
-    if (profile == null) return;
-    late final int pendingCount;
-    try {
-      pendingCount = await context.read<GetUnsyncedCountUseCase>().execute(
-        ownerId: profile.id,
-      );
-    } catch (error) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            'No se pudieron consultar los registros pendientes: $error',
-          ),
-        ),
-      );
-      return;
-    }
-    if (!mounted) return;
-
-    if (pendingCount > 0) {
-      final confirmed = await showDialog<bool>(
-        context: context,
-        builder: (context) => AlertDialog(
-          title: const Text('Registros pendientes'),
-          content: Text(
-            'Hay $pendingCount registros pendientes. Se sincronizarán cuando '
-            'este usuario vuelva a iniciar sesión con internet. La base local '
-            'se conservará en este dispositivo.',
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context, false),
-              child: const Text('Cancelar'),
-            ),
-            FilledButton(
-              onPressed: () => Navigator.pop(context, true),
-              child: const Text('Cerrar sesión'),
-            ),
-          ],
-        ),
-      );
-      if (confirmed != true || !mounted) return;
-    }
-
-    try {
-      await context.read<AuthProvider>().signOut();
-    } catch (error) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('No se pudo cerrar sesión: $error')),
-      );
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
     final provider = context.watch<HistoryProvider>();
     final syncProvider = context.watch<SyncProvider>();
-    final profile = context.watch<AuthProvider>().profile;
     final history = provider.history;
 
     return Scaffold(
       appBar: AppBar(
         title: const Text('Historial Clínico'),
-        actions: [
-          if (profile != null)
-            PopupMenuButton<_AccountAction>(
-              tooltip: 'Cuenta de usuario',
-              onSelected: (action) {
-                if (action == _AccountAction.signOut) _signOut();
-              },
-              itemBuilder: (context) => [
-                PopupMenuItem(
-                  enabled: false,
-                  child: Text(
-                    '${profile.displayName}\n${profile.role.label}',
-                    style: const TextStyle(color: AppColors.textPrimary),
-                  ),
-                ),
-                const PopupMenuDivider(),
-                const PopupMenuItem(
-                  value: _AccountAction.signOut,
-                  child: Text('Cerrar sesión'),
-                ),
-              ],
-            ),
-          IconButton(
-            icon: syncProvider.isSyncing
-                ? const SizedBox(
-                    width: 20,
-                    height: 20,
-                    child: CircularProgressIndicator(strokeWidth: 2),
-                  )
-                : const Icon(Icons.cloud_sync_outlined),
-            tooltip: 'Sincronizar ahora',
-            onPressed: syncProvider.isSyncing
-                ? null
-                : () async {
-                    await syncProvider.syncNow();
-                    await provider.loadHistory();
-                  },
-          ),
-        ],
+        actions: const [AccountMenuButton()],
       ),
       body: RefreshIndicator(
         onRefresh: () async {
@@ -227,7 +120,7 @@ class _HistoryPageState extends State<HistoryPage> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      '$recordCount consultas en SQLite local',
+                      '$recordCount evaluaciones en este dispositivo',
                       style: const TextStyle(
                         fontWeight: FontWeight.w700,
                         fontSize: 13,
@@ -432,6 +325,16 @@ class _HistoryPageState extends State<HistoryPage> {
   }
 
   void _showRecordDetails(AssessmentRecord record) {
+    final patient = record.patient;
+    final result = record.result;
+    final riesgo = result.riskLabel;
+    final hasEmergency = result.hasImmediateEmergency;
+    final (Color badgeColor, Color badgeBg) = _riskBadgeColors(
+      riesgo,
+      hasEmergency: hasEmergency,
+    );
+    final fecha = record.fechaGuardado.toIso8601String().split('T').first;
+
     showModalBottomSheet<void>(
       context: context,
       isScrollControlled: true,
@@ -441,19 +344,81 @@ class _HistoryPageState extends State<HistoryPage> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              Text(
-                'Detalle de evaluación · ${record.patient.patientId}',
-                style: Theme.of(context).textTheme.titleLarge,
+              Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      'Detalle de evaluación · ${patient.patientId}',
+                      style: Theme.of(context).textTheme.titleLarge,
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 10,
+                      vertical: 4,
+                    ),
+                    decoration: BoxDecoration(
+                      color: badgeBg,
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Text(
+                      hasEmergency ? 'CÓDIGO ROJO' : riesgo,
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w700,
+                        color: badgeColor,
+                      ),
+                    ),
+                  ),
+                ],
               ),
               const SizedBox(height: 12),
-              Text('Fecha: ${record.fechaGuardado.toIso8601String().split('T').first}'),
-              Text('Municipio: ${record.patient.municipio}'),
-              Text('Semanas de gestación: ${record.patient.semanasGestacion}'),
-              Text('Resultado: ${record.result.riskLabel}'),
-              if (record.result.clinicalAlerts.isNotEmpty)
-                Text(
-                  'Alerta: ${record.result.clinicalAlerts.map((alert) => alert.title).join(' | ')}',
+              Text(
+                '${patient.etnia} • ${patient.municipio}, ${patient.departamento}',
+                style: const TextStyle(
+                  fontSize: 13,
+                  color: AppColors.textSecondary,
+                  fontWeight: FontWeight.w600,
                 ),
+              ),
+              const SizedBox(height: 6),
+              Text('Fecha: $fecha'),
+              Text('Municipio: ${patient.municipio}'),
+              Text('Semanas de gestación: ${patient.semanasGestacion}'),
+              Text('Resultado: $riesgo'),
+              const SizedBox(height: 12),
+              Wrap(
+                spacing: 6,
+                runSpacing: 6,
+                children: [
+                  _buildMetricPill(
+                    'PA',
+                    '${patient.presionSistolica.toInt()}/${patient.presionDiastolica.toInt()}',
+                  ),
+                  _buildMetricPill('Hb', '${patient.hemoglobina} g/dL'),
+                  _buildMetricPill('Sem', '${patient.semanasGestacion} sem'),
+                  _buildMetricPill('Dist', '${patient.distanciaKm} km'),
+                ],
+              ),
+              if (result.clinicalAlerts.isNotEmpty) ...[
+                const SizedBox(height: 12),
+                Container(
+                  padding: const EdgeInsets.all(10),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFFEE2E2),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Text(
+                    'Alerta: ${result.clinicalAlerts.map((alert) => alert.title).join(' | ')}',
+                    style: const TextStyle(
+                      fontSize: 12,
+                      color: AppColors.emergencyRed,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ),
+              ],
               if (record.consultationCode case final code?) ...[
                 const SizedBox(height: 12),
                 ConsultationCodeCard(code: code),
@@ -463,6 +428,19 @@ class _HistoryPageState extends State<HistoryPage> {
         ),
       ),
     );
+  }
+
+  (Color, Color) _riskBadgeColors(String riesgo, {required bool hasEmergency}) {
+    if (hasEmergency) {
+      return (AppColors.emergencyRed, const Color(0xFFFEE2E2));
+    }
+    if (riesgo.contains('Alto')) {
+      return (AppColors.riskHigh, const Color(0xFFFEE2E2));
+    }
+    if (riesgo.contains('Medio') || riesgo.contains('Moderado')) {
+      return (AppColors.riskMedium, const Color(0xFFFEF3C7));
+    }
+    return (AppColors.riskLow, const Color(0xFFDCFCE7));
   }
 
   Widget _buildMetricPill(String title, String val) {
@@ -483,5 +461,3 @@ class _HistoryPageState extends State<HistoryPage> {
     );
   }
 }
-
-enum _AccountAction { signOut }

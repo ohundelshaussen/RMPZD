@@ -3,6 +3,7 @@ import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 
 import '../../../../core/constants/app_colors.dart';
+import '../../../auth/presentation/widgets/account_menu_button.dart';
 import '../../domain/entities/remote_assessment.dart';
 import '../../domain/repositories/admin_records_repository.dart';
 import '../providers/admin_records_provider.dart';
@@ -27,7 +28,10 @@ class _AdminRecordsPageState extends State<AdminRecordsPage> {
   Widget build(BuildContext context) {
     final provider = context.watch<AdminRecordsProvider>();
     return Scaffold(
-      appBar: AppBar(title: const Text('Registros')),
+      appBar: AppBar(
+        title: const Text('Registros'),
+        actions: const [AccountMenuButton()],
+      ),
       body: Column(
         children: [
           _buildFilters(provider),
@@ -104,35 +108,43 @@ class _AdminRecordsPageState extends State<AdminRecordsPage> {
         (value != null && values.containsKey(value)) ? value : null;
     return ConstrainedBox(
       constraints: const BoxConstraints(maxWidth: 220),
-      child: DropdownButton<T>(
-        isExpanded: true,
-        hint: Text(
-          label,
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 10),
+        decoration: BoxDecoration(
+          color: AppColors.surface,
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(color: const Color(0xFFE2E8F0)),
         ),
-        value: selectedValue,
-        underline: const SizedBox.shrink(),
-        items: [
-          DropdownMenuItem<T>(
-            value: null,
-            child: Text(
-              'Todos: $label',
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-            ),
+        child: DropdownButton<T>(
+          isExpanded: true,
+          hint: Text(
+            label,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
           ),
-          for (final entry in values.entries)
+          value: selectedValue,
+          underline: const SizedBox.shrink(),
+          items: [
             DropdownMenuItem<T>(
-              value: entry.key,
+              value: null,
               child: Text(
-                entry.value,
+                'Todos: $label',
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
               ),
             ),
-        ],
-        onChanged: onChanged,
+            for (final entry in values.entries)
+              DropdownMenuItem<T>(
+                value: entry.key,
+                child: Text(
+                  entry.value,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+          ],
+          onChanged: onChanged,
+        ),
       ),
     );
   }
@@ -211,6 +223,8 @@ class _AdminRecordsPageState extends State<AdminRecordsPage> {
 
   Widget _recordCard(BuildContext context, RemoteAssessment record) {
     final date = record.evaluationDate;
+    final riskLabel = record.riskLevel ?? 'Riesgo no informado';
+    final (Color badgeColor, Color badgeBg) = _riskBadgeColors(riskLabel);
     return Card(
       margin: const EdgeInsets.only(bottom: 10),
       child: InkWell(
@@ -233,13 +247,24 @@ class _AdminRecordsPageState extends State<AdminRecordsPage> {
                   ),
                   const SizedBox(width: 8),
                   Flexible(
-                    child: Text(
-                      record.riskLevel ?? 'Riesgo no informado',
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
-                        color: AppColors.primary,
-                        fontWeight: FontWeight.w700,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 8,
+                        vertical: 3,
+                      ),
+                      decoration: BoxDecoration(
+                        color: badgeBg,
+                        borderRadius: BorderRadius.circular(6),
+                      ),
+                      child: Text(
+                        riskLabel,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          fontSize: 11,
+                          color: badgeColor,
+                          fontWeight: FontWeight.w700,
+                        ),
                       ),
                     ),
                   ),
@@ -360,6 +385,19 @@ class _AdminRecordsPageState extends State<AdminRecordsPage> {
         ],
       ),
     );
+  }
+
+  (Color, Color) _riskBadgeColors(String riskLabel) {
+    if (riskLabel.contains('Alto')) {
+      return (AppColors.riskHigh, const Color(0xFFFEE2E2));
+    }
+    if (riskLabel.contains('Moderado') || riskLabel.contains('Medio')) {
+      return (AppColors.riskMedium, const Color(0xFFFEF3C7));
+    }
+    if (riskLabel.contains('Bajo')) {
+      return (AppColors.riskLow, const Color(0xFFDCFCE7));
+    }
+    return (AppColors.textSecondary, AppColors.surfaceVariant);
   }
 
   String _dateRangeLabel(AdminAssessmentFilters filters) {

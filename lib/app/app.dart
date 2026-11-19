@@ -4,6 +4,7 @@ import 'package:provider/single_child_widget.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../features/auth/domain/entities/user_profile.dart';
+import '../features/auth/presentation/pages/login_page.dart';
 import '../features/auth/presentation/providers/auth_provider.dart';
 import '../features/patient_portal/presentation/pages/patient_lookup_page.dart';
 import '../core/theme/app_theme.dart';
@@ -56,12 +57,31 @@ class _AuthGate extends StatefulWidget {
 }
 
 class _AuthGateState extends State<_AuthGate> {
+  bool _showStaffLogin = false;
+
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) context.read<AuthProvider>().restoreSession();
     });
+  }
+
+  void _openStaffLogin() {
+    if (!mounted) return;
+    setState(() => _showStaffLogin = true);
+  }
+
+  void _openPatientLookup() {
+    if (!mounted) return;
+    setState(() => _showStaffLogin = false);
+  }
+
+  Widget _buildUnauthenticatedEntry() {
+    if (_showStaffLogin) {
+      return LoginPage(onBackToLookup: _openPatientLookup);
+    }
+    return PatientLookupPage(onOpenStaffLogin: _openStaffLogin);
   }
 
   @override
@@ -71,11 +91,14 @@ class _AuthGateState extends State<_AuthGate> {
       case AuthStatus.loading:
         return const Scaffold(body: Center(child: CircularProgressIndicator()));
       case AuthStatus.unauthenticated:
-        return const PatientLookupPage();
+        return _buildUnauthenticatedEntry();
       case AuthStatus.authenticated:
         final UserProfile? profile = authProvider.profile;
         if (profile == null) {
-          return const PatientLookupPage();
+          return _buildUnauthenticatedEntry();
+        }
+        if (_showStaffLogin) {
+          _showStaffLogin = false;
         }
         return MainNavigationScreen(profile: profile);
     }

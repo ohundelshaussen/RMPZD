@@ -40,7 +40,7 @@ class AcademicDashboardBody extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: const [
                   Text(
-                    'Proyecto de Aula • Inteligencia Artificial',
+                    'Validación Clínica • Inteligencia Artificial',
                     style: TextStyle(color: Colors.white70, fontSize: 12),
                   ),
                   SizedBox(height: 4),

@@ -4,7 +4,9 @@ import '../../../../core/constants/app_colors.dart';
 import '../providers/auth_provider.dart';
 
 class LoginPage extends StatefulWidget {
-  const LoginPage({super.key});
+  final VoidCallback? onBackToLookup;
+
+  const LoginPage({this.onBackToLookup, super.key});
 
   @override
   State<LoginPage> createState() => _LoginPageState();
@@ -22,13 +24,24 @@ class _LoginPageState extends State<LoginPage> {
     super.dispose();
   }
 
+  void _handleBackToLookup() {
+    final onBackToLookup = widget.onBackToLookup;
+    if (onBackToLookup != null) {
+      onBackToLookup();
+      return;
+    }
+    if (Navigator.of(context).canPop()) {
+      Navigator.of(context).pop();
+    }
+  }
+
   Future<void> _submit() async {
     if (!_formKey.currentState!.validate()) return;
     final success = await context.read<AuthProvider>().signIn(
       _emailController.text,
       _passwordController.text,
     );
-    if (success && mounted) {
+    if (success && mounted && Navigator.of(context).canPop()) {
       Navigator.of(context).popUntil((route) => route.isFirst);
     }
   }
@@ -37,7 +50,12 @@ class _LoginPageState extends State<LoginPage> {
   Widget build(BuildContext context) {
     final provider = context.watch<AuthProvider>();
     return Scaffold(
-      appBar: AppBar(title: const Text('Iniciar sesión')),
+      appBar: AppBar(
+        leading: widget.onBackToLookup != null
+            ? BackButton(onPressed: _handleBackToLookup)
+            : null,
+        title: const Text('Iniciar sesión'),
+      ),
       body: Center(
         child: SingleChildScrollView(
           padding: const EdgeInsets.all(24),
@@ -61,6 +79,15 @@ class _LoginPageState extends State<LoginPage> {
                       fontSize: 24,
                       fontWeight: FontWeight.w800,
                       color: AppColors.textPrimary,
+                    ),
+                  ),
+                  const SizedBox(height: 6),
+                  const Text(
+                    'Acceso exclusivo para médicos y administradores autorizados',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      fontSize: 13,
+                      color: AppColors.textSecondary,
                     ),
                   ),
                   const SizedBox(height: 24),
@@ -113,11 +140,7 @@ class _LoginPageState extends State<LoginPage> {
                         : const Text('INICIAR SESIÓN'),
                   ),
                   TextButton(
-                    onPressed: () {
-                      if (Navigator.of(context).canPop()) {
-                        Navigator.of(context).pop();
-                      }
-                    },
+                    onPressed: _handleBackToLookup,
                     child: const Text('Volver a la consulta'),
                   ),
                 ],

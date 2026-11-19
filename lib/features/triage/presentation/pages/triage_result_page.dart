@@ -24,91 +24,100 @@ class TriageResultPage extends StatelessWidget {
       );
     }
 
+    void startNewEvaluation() {
+      if (Navigator.canPop(context)) {
+        Navigator.pop(context, true);
+      }
+      provider.reset();
+    }
+
     return Scaffold(
       appBar: AppBar(title: const Text('Dictamen de Triage')),
       body: SingleChildScrollView(
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            ResultStatusCard(patient: patient, result: result),
-            const SizedBox(height: 16),
-            AiProbabilityCard(result: result),
-            const SizedBox(height: 16),
-            ClinicalAlertSection(alerts: result.clinicalAlerts),
-            if (provider.savedAssessment?.consultationCode
-                case final consultationCode?) ...[
-              ConsultationCodeCard(code: consultationCode),
-              const SizedBox(height: 16),
-            ],
-            ElevatedButton.icon(
-              icon: provider.isSaving
-                  ? const SizedBox(
-                      width: 18,
-                      height: 18,
-                      child: CircularProgressIndicator(
-                        color: Colors.white,
-                        strokeWidth: 2,
-                      ),
-                    )
-                  : Icon(
-                      provider.isSaved
-                          ? Icons.check_circle_rounded
-                          : Icons.check_rounded,
-                      size: 20,
+        child: Center(
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 640),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                ResultStatusCard(patient: patient, result: result),
+                const SizedBox(height: 16),
+                AiProbabilityCard(result: result),
+                const SizedBox(height: 16),
+                ClinicalAlertSection(alerts: result.clinicalAlerts),
+                if (provider.isSaved) ...[
+                  if (provider.savedAssessment?.consultationCode
+                      case final consultationCode?) ...[
+                    ConsultationCodeCard(code: consultationCode),
+                    const SizedBox(height: 16),
+                  ],
+                  ElevatedButton.icon(
+                    icon: const Icon(Icons.add_circle_outline_rounded, size: 20),
+                    label: const Text('Realizar Nueva Evaluación'),
+                    onPressed: startNewEvaluation,
+                  ),
+                ] else ...[
+                  ElevatedButton.icon(
+                    icon: provider.isSaving
+                        ? const SizedBox(
+                            width: 18,
+                            height: 18,
+                            child: CircularProgressIndicator(
+                              color: Colors.white,
+                              strokeWidth: 2,
+                            ),
+                          )
+                        : const Icon(Icons.check_rounded, size: 20),
+                    label: Text(
+                      provider.isSaving
+                          ? 'GUARDANDO...'
+                          : 'GUARDAR EN REGISTRO LOCAL',
                     ),
-              label: Text(
-                provider.isSaving
-                    ? 'GUARDANDO...'
-                    : provider.isSaved
-                    ? 'GUARDADO EN REGISTRO LOCAL'
-                    : 'GUARDAR EN REGISTRO LOCAL',
-              ),
-              onPressed: (provider.isSaving || provider.isSaved)
-                  ? null
-                  : () async {
-                      final success = await provider.saveCurrentAssessment();
-                      if (!context.mounted) return;
-                      if (success) {
-                        await context.read<HistoryProvider>().loadHistory();
-                      }
-                      if (!context.mounted) return;
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(
-                          behavior: SnackBarBehavior.floating,
-                          backgroundColor: success
-                              ? AppColors.primary
-                              : AppColors.riskHigh,
-                          content: Text(
-                            success
-                                ? 'Consulta registrada en base de datos local SQLite.'
-                                : 'Error al registrar consulta.',
-                          ),
-                        ),
-                      );
-                    },
+                    onPressed: provider.isSaving
+                        ? null
+                        : () async {
+                            final success = await provider
+                                .saveCurrentAssessment();
+                            if (!context.mounted) return;
+                            if (success) {
+                              await context
+                                  .read<HistoryProvider?>()
+                                  ?.loadHistory();
+                            }
+                            if (!context.mounted) return;
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                behavior: SnackBarBehavior.floating,
+                                backgroundColor: success
+                                    ? AppColors.primary
+                                    : AppColors.riskHigh,
+                                content: Text(
+                                  success
+                                      ? 'Evaluación guardada correctamente.'
+                                      : 'Error al registrar consulta.',
+                                ),
+                              ),
+                            );
+                          },
+                  ),
+                  const SizedBox(height: 8),
+                  TextButton(
+                    onPressed: provider.isSaving ? null : startNewEvaluation,
+                    child: const Text(
+                      'Realizar Nueva Evaluación',
+                      style: TextStyle(
+                        color: AppColors.textSecondary,
+                        fontWeight: FontWeight.w600,
+                        fontSize: 13,
+                      ),
+                    ),
+                  ),
+                ],
+                const SizedBox(height: 20),
+              ],
             ),
-            const SizedBox(height: 8),
-            TextButton(
-              onPressed: provider.isSaving
-                  ? null
-                  : () {
-                      if (Navigator.canPop(context)) {
-                        Navigator.pop(context, true);
-                      }
-                      provider.reset();
-                    },
-              child: const Text(
-                'Realizar Nueva Evaluación',
-                style: TextStyle(
-                  color: AppColors.textSecondary,
-                  fontWeight: FontWeight.w600,
-                  fontSize: 13,
-                ),
-              ),
-            ),
-            const SizedBox(height: 20),
-          ],
+          ),
         ),
       ),
     );

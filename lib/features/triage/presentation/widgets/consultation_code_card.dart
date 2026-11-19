@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+import '../../../../core/constants/app_colors.dart';
 import '../../../../core/utils/consultation_code_generator.dart';
 
 class ConsultationCodeCard extends StatelessWidget {
@@ -12,14 +13,30 @@ class ConsultationCodeCard extends StatelessWidget {
   Widget build(BuildContext context) {
     return Card(
       color: const Color(0xFFE0F2F1),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(16),
+        side: BorderSide(color: AppColors.primary.withValues(alpha: 0.3)),
+      ),
       child: Padding(
         padding: const EdgeInsets.all(16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            const Text(
-              'Código de consulta de la paciente',
-              style: TextStyle(fontWeight: FontWeight.w700, fontSize: 16),
+            const Row(
+              children: [
+                Icon(
+                  Icons.verified_user_outlined,
+                  color: AppColors.primary,
+                  size: 20,
+                ),
+                SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    'Código de consulta de la paciente',
+                    style: TextStyle(fontWeight: FontWeight.w700, fontSize: 16),
+                  ),
+                ),
+              ],
             ),
             const SizedBox(height: 8),
             Row(
