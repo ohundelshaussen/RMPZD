@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 
 import '../../../../core/constants/app_colors.dart';
+import '../../../../shared/widgets/app_logo.dart';
 import '../../../auth/presentation/pages/login_page.dart';
 import '../../domain/usecases/lookup_patient_records_usecase.dart';
 import '../providers/patient_portal_provider.dart';
@@ -144,20 +145,15 @@ class _PatientLookupPageState extends State<PatientLookupPage> {
               child: Form(
                 key: _formKey,
                 child: ListView(
-                  padding: const EdgeInsets.fromLTRB(20, 8, 20, 16),
+                  padding: const EdgeInsets.fromLTRB(20, 16, 20, 16),
                   children: [
-                    const Icon(
-                      Icons.health_and_safety_rounded,
-                      size: 42,
-                      color: AppColors.primary,
-                      semanticLabel: 'Logo RMPZD',
-                    ),
-                    const SizedBox(height: 4),
+                    const AppLogo(),
+                    const SizedBox(height: 12),
                     const Text(
                       'RMPZD',
                       textAlign: TextAlign.center,
                       style: TextStyle(
-                        fontSize: 22,
+                        fontSize: 16,
                         fontWeight: FontWeight.w800,
                       ),
                     ),

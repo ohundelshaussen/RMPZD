@@ -265,6 +265,11 @@ void main() {
     ) async {
       await tester.pumpWidget(_portalApp(_FakeLookup(testCase.$1)).$1);
       await _submitLookup(tester);
+      await tester.scrollUntilVisible(
+        find.text(testCase.$2),
+        50,
+        scrollable: find.byType(Scrollable).first,
+      );
       expect(find.text(testCase.$2), findsOneWidget);
     });
   }

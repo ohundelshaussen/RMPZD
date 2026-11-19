@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../../../core/constants/app_colors.dart';
+import '../../../../shared/widgets/app_logo.dart';
 import '../providers/auth_provider.dart';
 
 class LoginPage extends StatefulWidget {
@@ -58,7 +59,7 @@ class _LoginPageState extends State<LoginPage> {
       ),
       body: Center(
         child: SingleChildScrollView(
-          padding: const EdgeInsets.all(24),
+          padding: const EdgeInsets.fromLTRB(24, 16, 24, 24),
           child: ConstrainedBox(
             constraints: const BoxConstraints(maxWidth: 420),
             child: Form(
@@ -66,17 +67,13 @@ class _LoginPageState extends State<LoginPage> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  const Icon(
-                    Icons.health_and_safety_rounded,
-                    size: 56,
-                    color: AppColors.primary,
-                  ),
-                  const SizedBox(height: 16),
+                  const AppLogo(),
+                  const SizedBox(height: 12),
                   const Text(
                     'RMPZD',
                     textAlign: TextAlign.center,
                     style: TextStyle(
-                      fontSize: 24,
+                      fontSize: 16,
                       fontWeight: FontWeight.w800,
                       color: AppColors.textPrimary,
                     ),
