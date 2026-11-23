@@ -38,6 +38,7 @@ class RemoteAssessment {
   }
 
   String? get patientId => fields['patient_id']?.toString();
+  String? get patientName => fields['nombre_paciente']?.toString();
   String? get municipality => fields['municipio']?.toString();
   String? get department => fields['departamento']?.toString();
   String? get riskLevel => fields['nivel_riesgo_predicho']?.toString();

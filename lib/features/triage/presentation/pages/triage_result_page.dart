@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../../../core/constants/app_colors.dart';
 import '../../../history/presentation/providers/history_provider.dart';
+import '../../../facilities/presentation/widgets/risk_facilities_recommendations.dart';
 import '../providers/triage_provider.dart';
 import '../widgets/ai_probability_card.dart';
 import '../widgets/clinical_alert_section.dart';
@@ -46,6 +47,14 @@ class TriageResultPage extends StatelessWidget {
                 AiProbabilityCard(result: result),
                 const SizedBox(height: 16),
                 ClinicalAlertSection(alerts: result.clinicalAlerts),
+                const SizedBox(height: 16),
+                RiskFacilitiesRecommendations(
+                  riskLevel: result.riskLevel,
+                  latitude: patient.latitud,
+                  longitude: patient.longitud,
+                  department: patient.departamento,
+                  municipality: patient.municipio,
+                ),
                 if (provider.isSaved) ...[
                   if (provider.savedAssessment?.consultationCode
                       case final consultationCode?) ...[
@@ -53,7 +62,10 @@ class TriageResultPage extends StatelessWidget {
                     const SizedBox(height: 16),
                   ],
                   ElevatedButton.icon(
-                    icon: const Icon(Icons.add_circle_outline_rounded, size: 20),
+                    icon: const Icon(
+                      Icons.add_circle_outline_rounded,
+                      size: 20,
+                    ),
                     label: const Text('Realizar Nueva Evaluación'),
                     onPressed: startNewEvaluation,
                   ),

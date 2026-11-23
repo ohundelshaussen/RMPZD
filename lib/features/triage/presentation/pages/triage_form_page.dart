@@ -6,6 +6,7 @@ import '../../domain/entities/patient_assessment.dart';
 import '../providers/triage_provider.dart';
 import '../widgets/clinical_history_section.dart';
 import '../widgets/gestation_access_section.dart';
+import '../widgets/patient_identity_section.dart';
 import '../widgets/territory_section.dart';
 import '../widgets/vital_signs_section.dart';
 import 'triage_result_page.dart';
@@ -40,6 +41,8 @@ class _TriageFormPageState extends State<TriageFormPage> {
   bool _antecedentePreeclampsia = false;
   bool _antecedenteDiabetes = false;
   bool _partoInstitucionalPrevio = false;
+  PatientIdentityData _identityData = const PatientIdentityData();
+  int _identityFormGeneration = 0;
 
   @override
   void dispose() {
@@ -79,6 +82,23 @@ class _TriageFormPageState extends State<TriageFormPage> {
       partoInstitucionalPrevio: _partoInstitucionalPrevio,
       afiliacionSgsss: _afiliacion,
       fechaEvaluacion: DateTime.now(),
+      nombrePaciente: _identityData.consentimientoDatos
+          ? _identityData.nombrePaciente
+          : null,
+      direccionPaciente: _identityData.consentimientoDatos
+          ? _identityData.direccionPaciente
+          : null,
+      latitud: _identityData.consentimientoDatos ? _identityData.latitud : null,
+      longitud: _identityData.consentimientoDatos
+          ? _identityData.longitud
+          : null,
+      precisionGpsM: _identityData.consentimientoDatos
+          ? _identityData.precisionGpsM
+          : null,
+      ubicacionCapturadaAt: _identityData.consentimientoDatos
+          ? _identityData.ubicacionCapturadaAt
+          : null,
+      consentimientoDatos: _identityData.consentimientoDatos,
     );
 
     final triageProvider = context.read<TriageProvider>();
@@ -118,6 +138,8 @@ class _TriageFormPageState extends State<TriageFormPage> {
       _antecedentePreeclampsia = false;
       _antecedenteDiabetes = false;
       _partoInstitucionalPrevio = false;
+      _identityData = const PatientIdentityData();
+      _identityFormGeneration++;
     });
   }
 
@@ -194,6 +216,10 @@ class _TriageFormPageState extends State<TriageFormPage> {
                         setState(() => _antecedenteDiabetes = value),
                     onInstitutionalBirthChanged: (value) =>
                         setState(() => _partoInstitucionalPrevio = value),
+                  ),
+                  PatientIdentitySection(
+                    key: ValueKey(_identityFormGeneration),
+                    onChanged: (value) => _identityData = value,
                   ),
                   Consumer<TriageProvider>(
                     builder: (context, provider, _) {

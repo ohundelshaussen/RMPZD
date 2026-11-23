@@ -116,27 +116,6 @@ class _PatientLookupPageState extends State<PatientLookupPage> {
       child: Scaffold(
         appBar: AppBar(
           title: const Text('Consulta de resultados'),
-          actions: [
-            Padding(
-              padding: const EdgeInsets.only(right: 12),
-              child: Tooltip(
-                message: 'Acceso para personal de salud',
-                child: FilledButton.tonalIcon(
-                  onPressed: _openStaffLogin,
-                  icon: const Icon(Icons.login_rounded, size: 18),
-                  label: const Text('Personal de salud'),
-                  style: FilledButton.styleFrom(
-                    backgroundColor: AppColors.primary.withValues(alpha: 0.12),
-                    foregroundColor: AppColors.primary,
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 12,
-                      vertical: 8,
-                    ),
-                  ),
-                ),
-              ),
-            ),
-          ],
         ),
         body: SafeArea(
           child: Center(

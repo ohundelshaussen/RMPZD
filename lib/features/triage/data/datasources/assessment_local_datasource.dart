@@ -26,6 +26,7 @@ class AssessmentLocalDataSource {
         syncStatus: record.syncStatus,
         lastSyncError: record.lastSyncError,
         consultationCode: record.consultationCode,
+        consentimientoAt: record.consentimientoAt,
         fechaGuardado: record.fechaGuardado,
       ),
     );

@@ -46,44 +46,131 @@ void main() {
     },
   );
 
-  test('migrates version 2 rows and preserves them without a consultation code', () async {
+  test(
+    'migrates version 2 rows and preserves them without a consultation code',
+    () async {
+      final db = await databaseFactoryFfi.openDatabase(inMemoryDatabasePath);
+      addTearDown(db.close);
+      await DatabaseHelper.createV2Schema(db);
+      await db.insert('assessments', {
+        'patient_id': 'legacy',
+        'municipio': 'Valledupar',
+        'departamento': 'Cesar',
+        'etnia': 'No Indígena',
+        'zona': 'Urbana',
+        'edad_materna': 24,
+        'semanas_gestacion': 28,
+        'numero_controles': 3,
+        'distancia_km': 18.5,
+        'tiempo_traslado_horas': 1.8,
+        'hemoglobina': 11.2,
+        'presion_sistolica': 120,
+        'presion_diastolica': 75,
+        'imc': 25.4,
+        'antecedente_preeclampsia': 0,
+        'antecedente_diabetes': 0,
+        'parto_institucional_previo': 1,
+        'afiliacion_sgsss': 'Subsidiado',
+        'fecha_evaluacion': '2026-11-11T00:00:00.000',
+        'nivel_riesgo_predicho': 'Bajo Riesgo',
+        'probabilidad_riesgo_alto': 0.1,
+        'alerta_clinica_inmediata': 0,
+        'probabilidad_desenlace_adverso': 0.1,
+        'uuid': 'legacy-uuid',
+      });
+
+      await DatabaseHelper.migrateV2ToV3(db);
+      await DatabaseHelper.migrateV3ToV4(db);
+
+      final rows = await db.query(
+        'assessments',
+        columns: [
+          'patient_id',
+          'codigo_consulta',
+          'nombre_paciente',
+          'direccion_paciente',
+          'latitud',
+          'longitud',
+          'precision_gps_m',
+          'ubicacion_capturada_at',
+          'consentimiento_datos',
+          'consentimiento_at',
+        ],
+      );
+      expect(rows.single, {
+        'patient_id': 'legacy',
+        'codigo_consulta': null,
+        'nombre_paciente': null,
+        'direccion_paciente': null,
+        'latitud': null,
+        'longitud': null,
+        'precision_gps_m': null,
+        'ubicacion_capturada_at': null,
+        'consentimiento_datos': 0,
+        'consentimiento_at': null,
+      });
+    },
+  );
+
+  test('migrates version 4 by creating the indexed facility catalog', () async {
     final db = await databaseFactoryFfi.openDatabase(inMemoryDatabasePath);
     addTearDown(db.close);
-    await DatabaseHelper.createV2Schema(db);
-    await db.insert('assessments', {
-      'patient_id': 'legacy',
-      'municipio': 'Valledupar',
-      'departamento': 'Cesar',
-      'etnia': 'No Indígena',
-      'zona': 'Urbana',
-      'edad_materna': 24,
-      'semanas_gestacion': 28,
-      'numero_controles': 3,
-      'distancia_km': 18.5,
-      'tiempo_traslado_horas': 1.8,
-      'hemoglobina': 11.2,
-      'presion_sistolica': 120,
-      'presion_diastolica': 75,
-      'imc': 25.4,
-      'antecedente_preeclampsia': 0,
-      'antecedente_diabetes': 0,
-      'parto_institucional_previo': 1,
-      'afiliacion_sgsss': 'Subsidiado',
-      'fecha_evaluacion': '2026-11-11T00:00:00.000',
-      'nivel_riesgo_predicho': 'Bajo Riesgo',
-      'probabilidad_riesgo_alto': 0.1,
-      'alerta_clinica_inmediata': 0,
-      'probabilidad_desenlace_adverso': 0.1,
-      'uuid': 'legacy-uuid',
-    });
+    await DatabaseHelper.createV4Schema(db);
 
-    await DatabaseHelper.migrateV2ToV3(db);
+    await DatabaseHelper.migrateV4ToV5(db);
 
-    final rows = await db.query(
-      'assessments',
-      columns: ['patient_id', 'codigo_consulta'],
+    final columns = await db.rawQuery('PRAGMA table_info(health_facilities)');
+    expect(columns.map((column) => column['name']), [
+      'id',
+      'nombre',
+      'tipo',
+      'nivel_atencion',
+      'municipio',
+      'departamento',
+      'direccion',
+      'telefono',
+      'latitud',
+      'longitud',
+      'urgencias_24h',
+      'atencion_obstetrica',
+      'atencion_parto',
+      'uci_adultos',
+      'codigo_reps',
+      'fuente',
+      'verificado',
+      'observaciones',
+      'activo',
+      'created_at',
+      'updated_at',
+    ]);
+    final columnTypes = {
+      for (final column in columns)
+        column['name']: column['type'],
+    };
+    expect(columnTypes['id'], 'TEXT');
+    expect(columnTypes['nivel_atencion'], 'INTEGER');
+    expect(columnTypes['latitud'], 'REAL');
+    expect(columnTypes['longitud'], 'REAL');
+    for (final column in [
+      'urgencias_24h',
+      'atencion_obstetrica',
+      'atencion_parto',
+      'uci_adultos',
+      'verificado',
+      'activo',
+    ]) {
+      expect(columnTypes[column], 'INTEGER');
+    }
+    expect(columnTypes['created_at'], 'TEXT');
+    expect(columnTypes['updated_at'], 'TEXT');
+    final indexes = await db.rawQuery('PRAGMA index_list(health_facilities)');
+    expect(
+      indexes.map((index) => index['name']),
+      containsAll([
+        'idx_health_facilities_department_municipality',
+        'idx_health_facilities_active',
+      ]),
     );
-    expect(rows.single, {'patient_id': 'legacy', 'codigo_consulta': null});
   });
 
   test('history and pending counts are scoped to the current owner', () async {
@@ -122,7 +209,10 @@ void main() {
     final savedRecord = firstOwnerHistory.singleWhere(
       (record) => record.patient.patientId == 'one',
     );
-    expect(savedRecord.consultationCode, matches(r'^[ABCDEFGHJKLMNPQRSTUVWXYZ23456789]{8}$'));
+    expect(
+      savedRecord.consultationCode,
+      matches(r'^[ABCDEFGHJKLMNPQRSTUVWXYZ23456789]{8}$'),
+    );
     expect(await repository.getUnsyncedCount(ownerId: 'doctor-1'), 2);
     expect(await local.getUnsyncedCount('doctor-2'), 1);
     final legacyRow = await database.query(
@@ -132,6 +222,46 @@ void main() {
       whereArgs: ['legacy'],
     );
     expect(legacyRow.single['owner_id'], 'doctor-1');
+  });
+
+  test('sets the consent timestamp when the assessment is saved', () async {
+    final (database, _, _, repository) = await _createLocalStore();
+    addTearDown(database.close);
+    final beforeSave = DateTime.now().toUtc();
+
+    final saved = await repository.saveAssessment(
+      _patient(
+        'consented',
+        consentimientoDatos: true,
+        nombrePaciente: 'Paciente de prueba',
+        direccionPaciente: 'Vereda Central',
+      ),
+      _result,
+      ownerId: 'doctor-1',
+    );
+    final afterSave = DateTime.now().toUtc();
+
+    expect(saved.consentimientoAt, isNotNull);
+    expect(saved.consentimientoAt!.isUtc, isTrue);
+    expect(saved.consentimientoAt!.isBefore(beforeSave), isFalse);
+    expect(
+      saved.consentimientoAt!.isBefore(afterSave) ||
+          saved.consentimientoAt == afterSave,
+      isTrue,
+    );
+    final row = await database.query(
+      'assessments',
+      columns: [
+        'nombre_paciente',
+        'direccion_paciente',
+        'consentimiento_datos',
+      ],
+      where: 'patient_id = ?',
+      whereArgs: ['consented'],
+    );
+    expect(row.single['consentimiento_datos'], 1);
+    expect(row.single['nombre_paciente'], 'Paciente de prueba');
+    expect(row.single['direccion_paciente'], 'Vereda Central');
   });
 
   test('sync marks the full batch as synced on success', () async {
@@ -261,7 +391,12 @@ const _result = TriageResult(
   hasImmediateEmergency: false,
 );
 
-PatientAssessment _patient(String patientId) => PatientAssessment(
+PatientAssessment _patient(
+  String patientId, {
+  bool consentimientoDatos = false,
+  String? nombrePaciente,
+  String? direccionPaciente,
+}) => PatientAssessment(
   patientId: patientId,
   municipio: 'Valledupar',
   departamento: 'Cesar',
@@ -281,6 +416,9 @@ PatientAssessment _patient(String patientId) => PatientAssessment(
   partoInstitucionalPrevio: true,
   afiliacionSgsss: 'Subsidiado',
   fechaEvaluacion: DateTime.utc(2026, 11, 11),
+  nombrePaciente: nombrePaciente,
+  direccionPaciente: direccionPaciente,
+  consentimientoDatos: consentimientoDatos,
 );
 
 Future<
@@ -295,8 +433,8 @@ _createLocalStore() async {
   final database = await databaseFactoryFfi.openDatabase(
     inMemoryDatabasePath,
     options: OpenDatabaseOptions(
-      version: 3,
-      onCreate: (db, version) => DatabaseHelper.createV3Schema(db),
+      version: 5,
+      onCreate: (db, version) => DatabaseHelper.createV5Schema(db),
     ),
   );
   final helper = DatabaseHelper.forDatabase(database);

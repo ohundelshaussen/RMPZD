@@ -1,8 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:intl/intl.dart';
 import '../../../../core/constants/app_colors.dart';
 import '../../../../core/sync/sync_provider.dart';
 import '../../../auth/presentation/widgets/account_menu_button.dart';
+import '../../../facilities/presentation/providers/facility_provider.dart';
+import '../../../facilities/presentation/widgets/nearest_facilities_section.dart';
 import '../../../triage/domain/entities/assessment_record.dart';
 import '../../../triage/presentation/widgets/consultation_code_card.dart';
 import '../providers/history_provider.dart';
@@ -20,6 +23,7 @@ class _HistoryPageState extends State<HistoryPage> {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       context.read<HistoryProvider>().loadHistory();
+      context.read<FacilityProvider?>()?.refreshCatalogStatus();
     });
   }
 
@@ -27,6 +31,7 @@ class _HistoryPageState extends State<HistoryPage> {
   Widget build(BuildContext context) {
     final provider = context.watch<HistoryProvider>();
     final syncProvider = context.watch<SyncProvider>();
+    final facilityProvider = context.watch<FacilityProvider?>();
     final history = provider.history;
 
     return Scaffold(
@@ -42,7 +47,12 @@ class _HistoryPageState extends State<HistoryPage> {
         child: ListView(
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
           children: [
-            _buildSyncBanner(context, history.length, syncProvider),
+            _buildSyncBanner(
+              context,
+              history.length,
+              syncProvider,
+              facilityProvider,
+            ),
             const SizedBox(height: 14),
             if (history.isEmpty)
               const Padding(
@@ -87,7 +97,10 @@ class _HistoryPageState extends State<HistoryPage> {
     BuildContext context,
     int recordCount,
     SyncProvider syncProvider,
+    FacilityProvider? facilityProvider,
   ) {
+    final facilityCount = facilityProvider?.availableCount ?? 0;
+    final lastUpdatedAt = facilityProvider?.lastUpdatedAt;
     final color = syncProvider.hasError
         ? AppColors.riskHigh
         : syncProvider.pendingCount > 0
@@ -154,6 +167,30 @@ class _HistoryPageState extends State<HistoryPage> {
             const SizedBox(height: 8),
             Text(message, style: TextStyle(fontSize: 11, color: color)),
           ],
+          const Divider(height: 20),
+          Text(
+            'Catálogo de centros: $facilityCount · '
+            '${lastUpdatedAt == null ? 'sin actualizar' : 'actualizado el ${DateFormat('dd/MM/yyyy HH:mm').format(lastUpdatedAt.toLocal())}'}'
+            '${facilityProvider?.isSyncing == true ? ' · actualizando' : ''}',
+            style: const TextStyle(
+              fontSize: 11,
+              color: AppColors.textSecondary,
+            ),
+          ),
+          if (facilityCount == 0) ...[
+            const SizedBox(height: 4),
+            const Text(
+              FacilityProvider.catalogUnavailableMessage,
+              style: TextStyle(fontSize: 11, color: AppColors.textMuted),
+            ),
+          ],
+          if (facilityProvider?.errorMessage case final error?) ...[
+            const SizedBox(height: 4),
+            Text(
+              error,
+              style: const TextStyle(fontSize: 11, color: AppColors.riskHigh),
+            ),
+          ],
         ],
       ),
     );
@@ -186,139 +223,139 @@ class _HistoryPageState extends State<HistoryPage> {
         borderRadius: BorderRadius.circular(12),
         onTap: () => _showRecordDetails(record),
         child: Padding(
-        padding: const EdgeInsets.all(14),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                const Icon(
-                  Icons.person_outline_rounded,
-                  color: AppColors.primary,
-                  size: 18,
-                ),
-                const SizedBox(width: 6),
-                Expanded(
-                  child: Text(
-                    patient.patientId,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(
-                      fontWeight: FontWeight.w700,
-                      fontSize: 14,
+          padding: const EdgeInsets.all(14),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  const Icon(
+                    Icons.person_outline_rounded,
+                    color: AppColors.primary,
+                    size: 18,
+                  ),
+                  const SizedBox(width: 6),
+                  Expanded(
+                    child: Text(
+                      patient.patientId,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        fontWeight: FontWeight.w700,
+                        fontSize: 14,
+                      ),
                     ),
                   ),
-                ),
-                const SizedBox(width: 8),
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 8,
-                    vertical: 3,
-                  ),
-                  decoration: BoxDecoration(
-                    color: badgeBg,
-                    borderRadius: BorderRadius.circular(6),
-                  ),
-                  child: Text(
-                    hasEmergency ? 'CÓDIGO ROJO' : riesgo,
-                    style: TextStyle(
-                      fontSize: 11,
-                      fontWeight: FontWeight.w700,
-                      color: badgeColor,
+                  const SizedBox(width: 8),
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 8,
+                      vertical: 3,
+                    ),
+                    decoration: BoxDecoration(
+                      color: badgeBg,
+                      borderRadius: BorderRadius.circular(6),
+                    ),
+                    child: Text(
+                      hasEmergency ? 'CÓDIGO ROJO' : riesgo,
+                      style: TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w700,
+                        color: badgeColor,
+                      ),
                     ),
                   ),
-                ),
-              ],
-            ),
-            const Divider(height: 14, color: Color(0xFFF1F5F9)),
-            Row(
-              children: [
-                Icon(
-                  switch (record.syncStatus) {
-                    SyncStatus.pending => Icons.schedule_rounded,
-                    SyncStatus.synced => Icons.cloud_done_rounded,
-                    SyncStatus.error => Icons.error_outline_rounded,
-                  },
-                  size: 14,
-                  color: switch (record.syncStatus) {
-                    SyncStatus.pending => AppColors.secondary,
-                    SyncStatus.synced => AppColors.riskLow,
-                    SyncStatus.error => AppColors.riskHigh,
-                  },
-                ),
-                const SizedBox(width: 5),
-                Expanded(
-                  child: Text(
+                ],
+              ),
+              const Divider(height: 14, color: Color(0xFFF1F5F9)),
+              Row(
+                children: [
+                  Icon(
                     switch (record.syncStatus) {
-                      SyncStatus.pending => 'Pendiente de sincronización',
-                      SyncStatus.synced => 'Sincronizado',
-                      SyncStatus.error =>
-                        'Error: ${record.lastSyncError ?? 'no especificado'}',
+                      SyncStatus.pending => Icons.schedule_rounded,
+                      SyncStatus.synced => Icons.cloud_done_rounded,
+                      SyncStatus.error => Icons.error_outline_rounded,
                     },
-                    style: TextStyle(
-                      fontSize: 11,
-                      color: switch (record.syncStatus) {
-                        SyncStatus.pending => AppColors.secondary,
-                        SyncStatus.synced => AppColors.riskLow,
-                        SyncStatus.error => AppColors.riskHigh,
+                    size: 14,
+                    color: switch (record.syncStatus) {
+                      SyncStatus.pending => AppColors.secondary,
+                      SyncStatus.synced => AppColors.riskLow,
+                      SyncStatus.error => AppColors.riskHigh,
+                    },
+                  ),
+                  const SizedBox(width: 5),
+                  Expanded(
+                    child: Text(
+                      switch (record.syncStatus) {
+                        SyncStatus.pending => 'Pendiente de sincronización',
+                        SyncStatus.synced => 'Sincronizado',
+                        SyncStatus.error =>
+                          'Error: ${record.lastSyncError ?? 'no especificado'}',
                       },
+                      style: TextStyle(
+                        fontSize: 11,
+                        color: switch (record.syncStatus) {
+                          SyncStatus.pending => AppColors.secondary,
+                          SyncStatus.synced => AppColors.riskLow,
+                          SyncStatus.error => AppColors.riskHigh,
+                        },
+                      ),
                     ),
                   ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 8),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Expanded(
-                  child: Text(
-                    '${patient.etnia} • ${patient.municipio}',
+                ],
+              ),
+              const SizedBox(height: 8),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Expanded(
+                    child: Text(
+                      '${patient.etnia} • ${patient.municipio}',
+                      style: const TextStyle(
+                        fontSize: 12,
+                        color: AppColors.textSecondary,
+                      ),
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                  Text(
+                    fecha,
                     style: const TextStyle(
-                      fontSize: 12,
-                      color: AppColors.textSecondary,
+                      fontSize: 11,
+                      color: AppColors.textMuted,
                     ),
-                    overflow: TextOverflow.ellipsis,
                   ),
-                ),
+                ],
+              ),
+              const SizedBox(height: 8),
+              Wrap(
+                spacing: 6,
+                runSpacing: 6,
+                children: [
+                  _buildMetricPill(
+                    'PA',
+                    '${patient.presionSistolica.toInt()}/${patient.presionDiastolica.toInt()}',
+                  ),
+                  _buildMetricPill('Hb', '${patient.hemoglobina} g/dL'),
+                  _buildMetricPill('Sem', '${patient.semanasGestacion} sem'),
+                  _buildMetricPill('Dist', '${patient.distanciaKm} km'),
+                ],
+              ),
+              if (result.clinicalAlerts.isNotEmpty) ...[
+                const SizedBox(height: 8),
                 Text(
-                  fecha,
+                  'Alerta: ${result.clinicalAlerts.map((alert) => alert.title).join(' | ')}',
                   style: const TextStyle(
                     fontSize: 11,
-                    color: AppColors.textMuted,
+                    color: AppColors.emergencyRed,
+                    fontWeight: FontWeight.w600,
                   ),
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
                 ),
               ],
-            ),
-            const SizedBox(height: 8),
-            Wrap(
-              spacing: 6,
-              runSpacing: 6,
-              children: [
-                _buildMetricPill(
-                  'PA',
-                  '${patient.presionSistolica.toInt()}/${patient.presionDiastolica.toInt()}',
-                ),
-                _buildMetricPill('Hb', '${patient.hemoglobina} g/dL'),
-                _buildMetricPill('Sem', '${patient.semanasGestacion} sem'),
-                _buildMetricPill('Dist', '${patient.distanciaKm} km'),
-              ],
-            ),
-            if (result.clinicalAlerts.isNotEmpty) ...[
-              const SizedBox(height: 8),
-              Text(
-                'Alerta: ${result.clinicalAlerts.map((alert) => alert.title).join(' | ')}',
-                style: const TextStyle(
-                  fontSize: 11,
-                  color: AppColors.emergencyRed,
-                  fontWeight: FontWeight.w600,
-                ),
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
-              ),
             ],
-          ],
-        ),
+          ),
         ),
       ),
     );
@@ -385,6 +422,26 @@ class _HistoryPageState extends State<HistoryPage> {
               const SizedBox(height: 6),
               Text('Fecha: $fecha'),
               Text('Municipio: ${patient.municipio}'),
+              if (patient.nombrePaciente case final name?) ...[
+                const SizedBox(height: 8),
+                Text('Nombre de la paciente: $name'),
+              ],
+              if (patient.direccionPaciente case final address?)
+                Text('Dirección: $address'),
+              if (patient.latitud != null && patient.longitud != null)
+                Text(
+                  'Ubicación: ${patient.latitud!.toStringAsFixed(5)}, '
+                  '${patient.longitud!.toStringAsFixed(5)}'
+                  '${patient.precisionGpsM == null ? '' : ' · precisión ${patient.precisionGpsM!.toStringAsFixed(1)} m'}',
+                ),
+              if (patient.latitud != null && patient.longitud != null) ...[
+                const SizedBox(height: 10),
+                OutlinedButton.icon(
+                  onPressed: () => _showNearbyFacilities(record),
+                  icon: const Icon(Icons.local_hospital_outlined),
+                  label: const Text('Centros cercanos'),
+                ),
+              ],
               Text('Semanas de gestación: ${patient.semanasGestacion}'),
               Text('Resultado: $riesgo'),
               const SizedBox(height: 12),
@@ -424,6 +481,29 @@ class _HistoryPageState extends State<HistoryPage> {
                 ConsultationCodeCard(code: code),
               ],
             ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  void _showNearbyFacilities(AssessmentRecord record) {
+    showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      builder: (context) => DraggableScrollableSheet(
+        expand: false,
+        initialChildSize: 0.9,
+        maxChildSize: 0.95,
+        minChildSize: 0.5,
+        builder: (context, scrollController) => SingleChildScrollView(
+          controller: scrollController,
+          padding: const EdgeInsets.all(16),
+          child: NearestFacilitiesSection(
+            latitude: record.patient.latitud,
+            longitude: record.patient.longitud,
+            department: record.patient.departamento,
+            municipality: record.patient.municipio,
           ),
         ),
       ),

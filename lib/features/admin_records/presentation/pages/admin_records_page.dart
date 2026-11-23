@@ -54,7 +54,11 @@ class _AdminRecordsPageState extends State<AdminRecordsPage> {
             value: filters.doctorId,
             values: provider.doctors,
             onChanged: (value) => provider.setFilters(
-              _copyFilters(filters, doctorId: value, clearDoctor: value == null),
+              _copyFilters(
+                filters,
+                doctorId: value,
+                clearDoctor: value == null,
+              ),
             ),
           ),
           _filterDropdown<String>(
@@ -88,9 +92,8 @@ class _AdminRecordsPageState extends State<AdminRecordsPage> {
               filters.fromDate != null ||
               filters.toDate != null)
             TextButton(
-              onPressed: () => provider.setFilters(
-                const AdminAssessmentFilters(),
-              ),
+              onPressed: () =>
+                  provider.setFilters(const AdminAssessmentFilters()),
               child: const Text('Limpiar'),
             ),
         ],
@@ -104,8 +107,9 @@ class _AdminRecordsPageState extends State<AdminRecordsPage> {
     required Map<T, String> values,
     required ValueChanged<T?> onChanged,
   }) {
-    final T? selectedValue =
-        (value != null && values.containsKey(value)) ? value : null;
+    final T? selectedValue = (value != null && values.containsKey(value))
+        ? value
+        : null;
     return ConstrainedBox(
       constraints: const BoxConstraints(maxWidth: 220),
       child: Container(
@@ -117,11 +121,7 @@ class _AdminRecordsPageState extends State<AdminRecordsPage> {
         ),
         child: DropdownButton<T>(
           isExpanded: true,
-          hint: Text(
-            label,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-          ),
+          hint: Text(label, maxLines: 1, overflow: TextOverflow.ellipsis),
           value: selectedValue,
           underline: const SizedBox.shrink(),
           items: [
@@ -158,7 +158,9 @@ class _AdminRecordsPageState extends State<AdminRecordsPage> {
             mainAxisSize: MainAxisSize.min,
             children: [
               Icon(
-                provider.isOffline ? Icons.wifi_off_rounded : Icons.error_outline,
+                provider.isOffline
+                    ? Icons.wifi_off_rounded
+                    : Icons.error_outline,
                 size: 44,
                 color: AppColors.textMuted,
               ),
@@ -198,9 +200,7 @@ class _AdminRecordsPageState extends State<AdminRecordsPage> {
                           textAlign: TextAlign.center,
                         ),
                         TextButton.icon(
-                          onPressed: provider.isLoading
-                              ? null
-                              : provider.retry,
+                          onPressed: provider.isLoading ? null : provider.retry,
                           icon: const Icon(Icons.refresh),
                           label: const Text('Reintentar'),
                         ),
@@ -239,7 +239,9 @@ class _AdminRecordsPageState extends State<AdminRecordsPage> {
                 children: [
                   Expanded(
                     child: Text(
-                      record.patientId ?? 'Paciente sin identificador',
+                      record.patientName ??
+                          record.patientId ??
+                          'Paciente sin identificador',
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: const TextStyle(fontWeight: FontWeight.w700),

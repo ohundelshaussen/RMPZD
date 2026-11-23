@@ -15,6 +15,13 @@ import 'package:rmpzd/features/auth/domain/usecases/get_current_profile_usecase.
 import 'package:rmpzd/features/auth/domain/usecases/sign_in_usecase.dart';
 import 'package:rmpzd/features/auth/domain/usecases/sign_out_usecase.dart';
 import 'package:rmpzd/features/auth/presentation/providers/auth_provider.dart';
+import 'package:rmpzd/features/facilities/domain/entities/facility_catalog_status.dart';
+import 'package:rmpzd/features/facilities/domain/entities/health_facility.dart';
+import 'package:rmpzd/features/facilities/domain/repositories/facility_repository.dart';
+import 'package:rmpzd/features/facilities/domain/usecases/get_facility_catalog_status_usecase.dart';
+import 'package:rmpzd/features/facilities/domain/usecases/get_nearest_facilities_usecase.dart';
+import 'package:rmpzd/features/facilities/domain/usecases/sync_facilities_usecase.dart';
+import 'package:rmpzd/features/facilities/presentation/providers/facility_provider.dart';
 import 'package:rmpzd/features/history/presentation/providers/history_provider.dart';
 import 'package:rmpzd/features/triage/data/datasources/assessment_local_datasource.dart';
 import 'package:rmpzd/features/triage/data/datasources/assessment_remote_datasource.dart';
@@ -92,6 +99,47 @@ void main() {
     await expectLater(syncProvider.syncNow(), completes);
   });
 
+  test(
+    'a failed facility pull does not affect assessment synchronization',
+    () async {
+      final fixture = await _createFixture();
+      addTearDown(fixture.database.close);
+      await fixture.repository.saveAssessment(
+        _patient,
+        _result,
+        ownerId: 'doctor-1',
+      );
+      final authProvider = _authProvider();
+      final facilityRepository = _FailingFacilityRepository();
+      final facilityProvider = FacilityProvider(
+        syncFacilities: SyncFacilitiesUseCase(facilityRepository),
+        getCatalogStatus: GetFacilityCatalogStatusUseCase(facilityRepository),
+        getNearestFacilities: GetNearestFacilitiesUseCase(facilityRepository),
+      );
+      final pullCompleted = Completer<void>();
+      final syncProvider = SyncProvider(
+        syncService: fixture.syncService,
+        connectivityService: _FakeConnectivityService(),
+        authProvider: authProvider,
+        getUnsyncedCount: GetUnsyncedCountUseCase(fixture.repository),
+        onSyncComplete: () async {
+          await facilityProvider.sync();
+          if (!pullCompleted.isCompleted) pullCompleted.complete();
+        },
+      );
+      addTearDown(authProvider.dispose);
+      addTearDown(syncProvider.dispose);
+      addTearDown(facilityProvider.dispose);
+
+      await authProvider.signIn('doctor@example.test', 'password');
+      await pullCompleted.future.timeout(const Duration(seconds: 2));
+
+      expect(await fixture.repository.getUnsyncedCount(ownerId: 'doctor-1'), 0);
+      expect(syncProvider.pendingCount, 0);
+      expect(facilityProvider.errorMessage, isNotNull);
+    },
+  );
+
   testWidgets(
     'createAppProviders resolves all providers in declaration order',
     (tester) async {
@@ -167,8 +215,8 @@ Future<_Fixture> _createFixture() async {
   final database = await databaseFactoryFfi.openDatabase(
     inMemoryDatabasePath,
     options: OpenDatabaseOptions(
-      version: 3,
-      onCreate: (db, version) => DatabaseHelper.createV3Schema(db),
+      version: 5,
+      onCreate: (db, version) => DatabaseHelper.createV5Schema(db),
     ),
   );
   final local = AssessmentLocalDataSource(
@@ -236,6 +284,29 @@ class _FakeConnectivityService implements ConnectivityService {
 
   @override
   Future<bool> hasInternet() async => true;
+}
+
+class _FailingFacilityRepository implements FacilityRepository {
+  @override
+  Future<int> syncFacilities() async {
+    throw StateError('catalog pull failed');
+  }
+
+  @override
+  Future<FacilityCatalogStatus> getCatalogStatus() async =>
+      const FacilityCatalogStatus(availableCount: 0, lastUpdatedAt: null);
+
+  @override
+  Future<List<HealthFacility>> getNearestFacilities(
+    double? latitude,
+    double? longitude, {
+    int limit = 5,
+    bool soloObstetricas = false,
+    bool soloUrgencias = false,
+    bool soloObstetricasOUrgencias = false,
+    String? departamento,
+    String? municipio,
+  }) async => const [];
 }
 
 class _AcceptingRemoteDataSource implements AssessmentRemoteDataSource {

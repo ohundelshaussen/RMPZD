@@ -18,6 +18,13 @@ class PatientAssessment {
   final bool partoInstitucionalPrevio;
   final String afiliacionSgsss;
   final DateTime fechaEvaluacion;
+  final String? nombrePaciente;
+  final String? direccionPaciente;
+  final double? latitud;
+  final double? longitud;
+  final double? precisionGpsM;
+  final DateTime? ubicacionCapturadaAt;
+  final bool consentimientoDatos;
 
   const PatientAssessment({
     required this.patientId,
@@ -39,5 +46,12 @@ class PatientAssessment {
     required this.partoInstitucionalPrevio,
     required this.afiliacionSgsss,
     required this.fechaEvaluacion,
+    this.nombrePaciente,
+    this.direccionPaciente,
+    this.latitud,
+    this.longitud,
+    this.precisionGpsM,
+    this.ubicacionCapturadaAt,
+    this.consentimientoDatos = false,
   });
 }

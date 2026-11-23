@@ -74,9 +74,9 @@ void main() {
 
       expect(find.text('Consulta de resultados'), findsOneWidget);
       expect(find.text('Soy Paciente'), findsOneWidget);
-      expect(find.byTooltip('Acceso para personal de salud'), findsOneWidget);
+      expect(tester.widget<AppBar>(find.byType(AppBar)).actions, isNull);
 
-      await tester.tap(find.byTooltip('Acceso para personal de salud'));
+      await tester.tap(find.text('Personal de Salud'));
       await tester.pumpAndSettle();
       expect(find.text('Iniciar sesión'), findsOneWidget);
       expect(
@@ -85,6 +85,15 @@ void main() {
         ),
         findsOneWidget,
       );
+      expect(find.byType(BackButton), findsOneWidget);
+
+      await tester.tap(find.byType(BackButton));
+      await tester.pumpAndSettle();
+      expect(find.text('Consulta de resultados'), findsOneWidget);
+
+      await tester.tap(find.text('Personal de Salud'));
+      await tester.pumpAndSettle();
+      expect(find.text('Iniciar sesión'), findsOneWidget);
       expect(find.text('Volver a la consulta'), findsOneWidget);
 
       await tester.tap(find.text('Volver a la consulta'));

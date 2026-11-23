@@ -57,6 +57,16 @@ class AssessmentModel {
           .toUtc()
           .toIso8601String(),
       'codigo_consulta': record.consultationCode?.replaceAll('-', ''),
+      'nombre_paciente': patient.nombrePaciente,
+      'direccion_paciente': patient.direccionPaciente,
+      'latitud': patient.latitud,
+      'longitud': patient.longitud,
+      'precision_gps_m': patient.precisionGpsM,
+      'ubicacion_capturada_at': patient.ubicacionCapturadaAt
+          ?.toUtc()
+          .toIso8601String(),
+      'consentimiento_datos': patient.consentimientoDatos ? 1 : 0,
+      'consentimiento_at': record.consentimientoAt?.toUtc().toIso8601String(),
     };
   }
 
@@ -65,6 +75,7 @@ class AssessmentModel {
   Map<String, dynamic> toRemoteJson() {
     final patient = record.patient;
     final result = record.result;
+    final hasConsent = patient.consentimientoDatos;
     return {
       'id': record.uuid,
       'created_by': record.ownerId,
@@ -95,6 +106,18 @@ class AssessmentModel {
           : null,
       'probabilidad_desenlace_adverso': result.probDesenlaceAdverso,
       'codigo_consulta': record.consultationCode?.replaceAll('-', ''),
+      'nombre_paciente': hasConsent ? patient.nombrePaciente : null,
+      'direccion_paciente': hasConsent ? patient.direccionPaciente : null,
+      'latitud': hasConsent ? patient.latitud : null,
+      'longitud': hasConsent ? patient.longitud : null,
+      'precision_gps_m': hasConsent ? patient.precisionGpsM : null,
+      'ubicacion_capturada_at': hasConsent
+          ? patient.ubicacionCapturadaAt?.toUtc().toIso8601String()
+          : null,
+      'consentimiento_datos': hasConsent,
+      'consentimiento_at': hasConsent
+          ? record.consentimientoAt?.toUtc().toIso8601String()
+          : null,
     };
   }
 
@@ -138,6 +161,15 @@ class AssessmentModel {
       partoInstitucionalPrevio: (map['parto_institucional_previo'] as int) == 1,
       afiliacionSgsss: map['afiliacion_sgsss'] as String,
       fechaEvaluacion: fechaGuardado,
+      nombrePaciente: map['nombre_paciente'] as String?,
+      direccionPaciente: map['direccion_paciente'] as String?,
+      latitud: (map['latitud'] as num?)?.toDouble(),
+      longitud: (map['longitud'] as num?)?.toDouble(),
+      precisionGpsM: (map['precision_gps_m'] as num?)?.toDouble(),
+      ubicacionCapturadaAt: map['ubicacion_capturada_at'] is String
+          ? DateTime.parse(map['ubicacion_capturada_at'] as String)
+          : null,
+      consentimientoDatos: (map['consentimiento_datos'] as int? ?? 0) == 1,
     );
 
     final result = TriageResult(
@@ -182,6 +214,9 @@ class AssessmentModel {
         ),
         lastSyncError: map['last_sync_error'] as String?,
         consultationCode: map['codigo_consulta'] as String?,
+        consentimientoAt: map['consentimiento_at'] is String
+            ? DateTime.parse(map['consentimiento_at'] as String)
+            : null,
         fechaGuardado: fechaGuardado,
       ),
     );

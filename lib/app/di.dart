@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:provider/provider.dart';
 import 'package:provider/single_child_widget.dart';
 import 'package:connectivity_plus/connectivity_plus.dart';
@@ -16,6 +18,7 @@ import '../features/auth/domain/usecases/get_current_profile_usecase.dart';
 import '../features/auth/domain/usecases/sign_in_usecase.dart';
 import '../features/auth/domain/usecases/sign_out_usecase.dart';
 import '../features/auth/presentation/providers/auth_provider.dart';
+import '../features/auth/domain/entities/user_profile.dart';
 import '../features/admin_records/data/datasources/admin_records_remote_datasource.dart';
 import '../features/admin_records/data/repositories/admin_records_repository_impl.dart';
 import '../features/admin_records/domain/repositories/admin_records_repository.dart';
@@ -27,6 +30,16 @@ import '../features/dashboard/data/repositories/dashboard_repository_impl.dart';
 import '../features/dashboard/domain/repositories/dashboard_repository.dart';
 import '../features/dashboard/domain/usecases/get_dashboard_stats_usecase.dart';
 import '../features/dashboard/presentation/providers/dashboard_provider.dart';
+import '../features/facilities/data/datasources/facility_local_datasource.dart';
+import '../features/facilities/data/datasources/facility_remote_datasource.dart';
+import '../features/facilities/data/repositories/facility_repository_impl.dart';
+import '../features/facilities/domain/repositories/facility_repository.dart';
+import '../features/facilities/domain/usecases/get_facility_catalog_status_usecase.dart';
+import '../features/facilities/domain/usecases/get_nearest_facilities_usecase.dart';
+import '../features/facilities/domain/usecases/sync_facilities_usecase.dart';
+import '../features/facilities/presentation/providers/facility_provider.dart';
+import '../features/facilities/presentation/providers/nearest_facilities_provider.dart';
+import '../features/facilities/presentation/services/facility_link_launcher.dart';
 import '../features/history/presentation/providers/history_provider.dart';
 import '../features/patient_portal/data/datasources/patient_portal_remote_data_source.dart';
 import '../features/patient_portal/domain/usecases/lookup_patient_records_usecase.dart';
@@ -127,8 +140,7 @@ List<SingleChildWidget> createAppProviders({
       ),
     ),
     Provider<DashboardRemoteDataSource>(
-      create: (_) =>
-          SupabaseDashboardRemoteDataSource(client: supabaseClient),
+      create: (_) => SupabaseDashboardRemoteDataSource(client: supabaseClient),
     ),
     Provider<DashboardLocalCache>(
       create: (_) => DashboardLocalCache(preferences: sharedPreferences),
@@ -150,6 +162,49 @@ List<SingleChildWidget> createAppProviders({
       ),
     ),
     Provider<DatabaseHelper>(create: (_) => DatabaseHelper.instance),
+    Provider<FacilityRemoteDataSource>(
+      create: (_) => SupabaseFacilityRemoteDataSource(client: supabaseClient),
+    ),
+    Provider<FacilityLocalDataSource>(
+      create: (context) =>
+          FacilityLocalDataSource(dbHelper: context.read<DatabaseHelper>()),
+    ),
+    Provider<FacilityRepository>(
+      create: (context) => FacilityRepositoryImpl(
+        remoteDataSource: context.read<FacilityRemoteDataSource>(),
+        localDataSource: context.read<FacilityLocalDataSource>(),
+        preferences: sharedPreferences,
+      ),
+    ),
+    Provider<SyncFacilitiesUseCase>(
+      create: (context) =>
+          SyncFacilitiesUseCase(context.read<FacilityRepository>()),
+    ),
+    Provider<GetFacilityCatalogStatusUseCase>(
+      create: (context) =>
+          GetFacilityCatalogStatusUseCase(context.read<FacilityRepository>()),
+    ),
+    Provider<GetNearestFacilitiesUseCase>(
+      create: (context) =>
+          GetNearestFacilitiesUseCase(context.read<FacilityRepository>()),
+    ),
+    ChangeNotifierProvider<FacilityProvider>(
+      create: (context) => FacilityProvider(
+        syncFacilities: context.read<SyncFacilitiesUseCase>(),
+        getCatalogStatus: context.read<GetFacilityCatalogStatusUseCase>(),
+        getNearestFacilities: context.read<GetNearestFacilitiesUseCase>(),
+      ),
+    ),
+    ChangeNotifierProvider<NearestFacilitiesProvider>(
+      create: (context) => NearestFacilitiesProvider(
+        getNearestFacilities: context.read<GetNearestFacilitiesUseCase>(),
+        getCatalogStatus: context.read<GetFacilityCatalogStatusUseCase>(),
+        checkInternet: context.read<ConnectivityService>().hasInternet,
+      ),
+    ),
+    Provider<FacilityLinkLauncher>(
+      create: (_) => const UrlFacilityLinkLauncher(),
+    ),
     Provider<AssessmentLocalDataSource>(
       create: (context) =>
           AssessmentLocalDataSource(dbHelper: context.read<DatabaseHelper>()),
@@ -209,7 +264,13 @@ List<SingleChildWidget> createAppProviders({
         connectivityService: context.read<ConnectivityService>(),
         authProvider: context.read<AuthProvider>(),
         getUnsyncedCount: context.read<GetUnsyncedCountUseCase>(),
-        onSyncComplete: () => context.read<HistoryProvider>().loadHistory(),
+        onSyncComplete: () async {
+          final role = context.read<AuthProvider>().profile?.role;
+          if (role == UserRole.doctor || role == UserRole.admin) {
+            unawaited(context.read<FacilityProvider>().sync());
+          }
+          await context.read<HistoryProvider>().loadHistory();
+        },
       ),
     ),
     ChangeNotifierProvider<TriageProvider>(

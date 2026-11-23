@@ -25,6 +25,9 @@ class AssessmentRepositoryImpl implements AssessmentRepository {
         uuid: const Uuid().v4(),
         ownerId: ownerId,
         consultationCode: ConsultationCodeGenerator().generate(),
+        consentimientoAt: patient.consentimientoDatos
+            ? DateTime.now().toUtc()
+            : null,
         fechaGuardado: patient.fechaEvaluacion,
       ),
     );

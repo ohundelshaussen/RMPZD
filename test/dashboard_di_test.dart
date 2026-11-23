@@ -23,6 +23,15 @@ import 'package:rmpzd/features/dashboard/data/datasources/dashboard_remote_data_
 import 'package:rmpzd/features/dashboard/domain/repositories/dashboard_repository.dart';
 import 'package:rmpzd/features/dashboard/domain/usecases/get_dashboard_stats_usecase.dart';
 import 'package:rmpzd/features/dashboard/presentation/providers/dashboard_provider.dart';
+import 'package:rmpzd/features/facilities/data/datasources/facility_local_datasource.dart';
+import 'package:rmpzd/features/facilities/data/datasources/facility_remote_datasource.dart';
+import 'package:rmpzd/features/facilities/domain/repositories/facility_repository.dart';
+import 'package:rmpzd/features/facilities/domain/usecases/get_facility_catalog_status_usecase.dart';
+import 'package:rmpzd/features/facilities/domain/usecases/get_nearest_facilities_usecase.dart';
+import 'package:rmpzd/features/facilities/domain/usecases/sync_facilities_usecase.dart';
+import 'package:rmpzd/features/facilities/presentation/providers/facility_provider.dart';
+import 'package:rmpzd/features/facilities/presentation/providers/nearest_facilities_provider.dart';
+import 'package:rmpzd/features/facilities/presentation/services/facility_link_launcher.dart';
 import 'package:rmpzd/features/history/presentation/providers/history_provider.dart';
 import 'package:rmpzd/features/patient_portal/data/datasources/patient_portal_remote_data_source.dart';
 import 'package:rmpzd/features/patient_portal/domain/usecases/lookup_patient_records_usecase.dart';
@@ -78,6 +87,15 @@ void main() {
                 context.read<GetDashboardStatsUseCase>(),
                 context.read<DashboardProvider>(),
                 context.read<DatabaseHelper>(),
+                context.read<FacilityRemoteDataSource>(),
+                context.read<FacilityLocalDataSource>(),
+                context.read<FacilityRepository>(),
+                context.read<SyncFacilitiesUseCase>(),
+                context.read<GetFacilityCatalogStatusUseCase>(),
+                context.read<GetNearestFacilitiesUseCase>(),
+                context.read<FacilityProvider>(),
+                context.read<NearestFacilitiesProvider>(),
+                context.read<FacilityLinkLauncher>(),
                 context.read<AssessmentLocalDataSource>(),
                 context.read<AssessmentRemoteDataSource>(),
                 context.read<ClinicalRulesEngine>(),
@@ -93,7 +111,7 @@ void main() {
                 context.read<SyncProvider>(),
                 context.read<TriageProvider>(),
               ];
-              expect(providers, hasLength(36));
+              expect(providers, hasLength(45));
               return const SizedBox();
             },
           ),

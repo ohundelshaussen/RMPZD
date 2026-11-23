@@ -7,7 +7,11 @@ import 'package:sqflite_common_ffi/sqflite_ffi.dart'
     show sqfliteFfiInit, databaseFactoryFfi;
 
 class DatabaseHelper {
-  static String _createAssessmentsTable({required bool withConsultationCode}) => '''
+  static String _createAssessmentsTable({
+    required bool withConsultationCode,
+    bool withIdentityFields = false,
+  }) =>
+      '''
     CREATE TABLE assessments (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       patient_id TEXT NOT NULL,
@@ -40,7 +44,41 @@ class DatabaseHelper {
       sync_status TEXT NOT NULL DEFAULT 'pending',
       last_sync_error TEXT,
       sync_attempts INTEGER NOT NULL DEFAULT 0,
-      updated_at TEXT${withConsultationCode ? ',\n      codigo_consulta TEXT' : ''}
+      updated_at TEXT${withConsultationCode ? ',\n      codigo_consulta TEXT' : ''}${withIdentityFields ? ''',
+      nombre_paciente TEXT,
+      direccion_paciente TEXT,
+      latitud REAL,
+      longitud REAL,
+      precision_gps_m REAL,
+      ubicacion_capturada_at TEXT,
+      consentimiento_datos INTEGER NOT NULL DEFAULT 0,
+      consentimiento_at TEXT''' : ''}
+    )
+  ''';
+
+  static const _createHealthFacilitiesTable = '''
+    CREATE TABLE health_facilities (
+    id TEXT PRIMARY KEY NOT NULL,
+    nombre TEXT,
+    tipo TEXT,
+    nivel_atencion INTEGER,
+    municipio TEXT,
+    departamento TEXT,
+    direccion TEXT,
+    telefono TEXT,
+    latitud REAL,
+    longitud REAL,
+    urgencias_24h INTEGER,
+    atencion_obstetrica INTEGER,
+    atencion_parto INTEGER,
+    uci_adultos INTEGER,
+    codigo_reps TEXT,
+    fuente TEXT,
+    verificado INTEGER,
+    observaciones TEXT,
+    activo INTEGER,
+    created_at TEXT,
+    updated_at TEXT
     )
   ''';
 
@@ -73,14 +111,14 @@ class DatabaseHelper {
 
     return await openDatabase(
       path,
-      version: 3,
+      version: 5,
       onCreate: _createDB,
       onUpgrade: _onUpgrade,
     );
   }
 
   Future<void> _createDB(Database db, int version) async {
-    await createV3Schema(db);
+    await createV5Schema(db);
   }
 
   @visibleForTesting
@@ -99,6 +137,25 @@ class DatabaseHelper {
     );
   }
 
+  @visibleForTesting
+  static Future<void> createV4Schema(DatabaseExecutor db) async {
+    await db.execute(
+      _createAssessmentsTable(
+        withConsultationCode: true,
+        withIdentityFields: true,
+      ),
+    );
+    await db.execute(
+      'CREATE UNIQUE INDEX idx_assessments_uuid ON assessments(uuid)',
+    );
+  }
+
+  @visibleForTesting
+  static Future<void> createV5Schema(DatabaseExecutor db) async {
+    await createV4Schema(db);
+    await _createHealthFacilities(db);
+  }
+
   Future<void> _onUpgrade(Database db, int oldVersion, int newVersion) async {
     for (var version = oldVersion; version < newVersion; version++) {
       switch (version) {
@@ -108,6 +165,12 @@ class DatabaseHelper {
         case 2:
           await migrateV2ToV3(db);
           break;
+        case 3:
+          await migrateV3ToV4(db);
+          break;
+        case 4:
+          await migrateV4ToV5(db);
+          break;
       }
     }
   }
@@ -115,6 +178,42 @@ class DatabaseHelper {
   @visibleForTesting
   static Future<void> migrateV2ToV3(DatabaseExecutor db) async {
     await db.execute('ALTER TABLE assessments ADD COLUMN codigo_consulta TEXT');
+  }
+
+  @visibleForTesting
+  static Future<void> migrateV3ToV4(DatabaseExecutor db) async {
+    await db.execute('ALTER TABLE assessments ADD COLUMN nombre_paciente TEXT');
+    await db.execute(
+      'ALTER TABLE assessments ADD COLUMN direccion_paciente TEXT',
+    );
+    await db.execute('ALTER TABLE assessments ADD COLUMN latitud REAL');
+    await db.execute('ALTER TABLE assessments ADD COLUMN longitud REAL');
+    await db.execute('ALTER TABLE assessments ADD COLUMN precision_gps_m REAL');
+    await db.execute(
+      'ALTER TABLE assessments ADD COLUMN ubicacion_capturada_at TEXT',
+    );
+    await db.execute(
+      'ALTER TABLE assessments ADD COLUMN consentimiento_datos INTEGER NOT NULL DEFAULT 0',
+    );
+    await db.execute(
+      'ALTER TABLE assessments ADD COLUMN consentimiento_at TEXT',
+    );
+  }
+
+  @visibleForTesting
+  static Future<void> migrateV4ToV5(DatabaseExecutor db) async {
+    await _createHealthFacilities(db);
+  }
+
+  static Future<void> _createHealthFacilities(DatabaseExecutor db) async {
+    await db.execute(_createHealthFacilitiesTable);
+    await db.execute(
+      'CREATE INDEX idx_health_facilities_department_municipality '
+      'ON health_facilities(departamento, municipio)',
+    );
+    await db.execute(
+      'CREATE INDEX idx_health_facilities_active ON health_facilities(activo)',
+    );
   }
 
   @visibleForTesting

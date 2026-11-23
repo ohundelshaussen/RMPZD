@@ -12,6 +12,7 @@ class AssessmentRecord {
   final SyncStatus syncStatus;
   final String? lastSyncError;
   final String? consultationCode;
+  final DateTime? consentimientoAt;
   final DateTime fechaGuardado;
 
   const AssessmentRecord({
@@ -23,6 +24,7 @@ class AssessmentRecord {
     this.syncStatus = SyncStatus.pending,
     this.lastSyncError,
     this.consultationCode,
+    this.consentimientoAt,
     required this.fechaGuardado,
   });
 

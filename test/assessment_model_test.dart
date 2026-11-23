@@ -103,9 +103,17 @@ void main() {
           'sync_attempts',
           'updated_at',
           'codigo_consulta',
+          'nombre_paciente',
+          'direccion_paciente',
+          'latitud',
+          'longitud',
+          'precision_gps_m',
+          'ubicacion_capturada_at',
+          'consentimiento_datos',
+          'consentimiento_at',
         ]),
       );
-      expect(row, hasLength(33));
+      expect(row, hasLength(41));
       expect(row['codigo_consulta'], 'ABCD2345');
       expect(model.toJson(), row);
       expect(restored.idLocal, 42);
@@ -176,6 +184,14 @@ void main() {
     expect(payload['alerta_clinica_inmediata'], isFalse);
     expect(payload['fecha_evaluacion'], '2026-11-11T20:00:00.000Z');
     expect(payload['codigo_consulta'], 'ABCD2345');
+    expect(payload['consentimiento_datos'], isFalse);
+    expect(payload['nombre_paciente'], isNull);
+    expect(payload['direccion_paciente'], isNull);
+    expect(payload['latitud'], isNull);
+    expect(payload['longitud'], isNull);
+    expect(payload['precision_gps_m'], isNull);
+    expect(payload['ubicacion_capturada_at'], isNull);
+    expect(payload['consentimiento_at'], isNull);
     expect(
       payload.keys,
       isNot(
@@ -190,6 +206,79 @@ void main() {
         ),
       ),
     );
-    expect(payload, hasLength(27));
+    expect(payload, hasLength(35));
   });
+
+  test(
+    'persists consented identity and UTC timestamps in local and remote maps',
+    () {
+      final date = DateTime.parse('2026-11-11T15:00:00-05:00');
+      final captureDate = DateTime.parse('2026-11-11T15:10:00-05:00');
+      final consentDate = DateTime.parse('2026-11-11T15:12:00-05:00');
+      final record = AssessmentRecord(
+        patient: PatientAssessment(
+          patientId: 'MP-REMOTE',
+          municipio: 'Valledupar',
+          departamento: 'Cesar',
+          etnia: 'No Indígena',
+          zona: 'Urbana',
+          edadMaterna: 24,
+          semanasGestacion: 28,
+          numeroControles: 3,
+          distanciaKm: 18.5,
+          tiempoTrasladoHoras: 1.8,
+          hemoglobina: 11.2,
+          presionSistolica: 120,
+          presionDiastolica: 75,
+          imc: 25.4,
+          antecedentePreeclampsia: false,
+          antecedenteDiabetes: false,
+          partoInstitucionalPrevio: true,
+          afiliacionSgsss: 'Subsidiado',
+          fechaEvaluacion: date,
+          nombrePaciente: 'Paciente de prueba',
+          direccionPaciente: 'Barrio Centro',
+          latitud: 10.4631,
+          longitud: -73.2532,
+          precisionGpsM: 8.4,
+          ubicacionCapturadaAt: captureDate,
+          consentimientoDatos: true,
+        ),
+        result: const TriageResult(
+          riskLevel: RiskLevel.bajo,
+          probAlto: 0.1,
+          probMedio: 0.2,
+          probBajo: 0.7,
+          riesgoDesenlaceAdverso: false,
+          probDesenlaceAdverso: 0.1,
+          clinicalAlerts: [],
+          hasImmediateEmergency: false,
+        ),
+        uuid: '97c76ec7-9228-4de0-88c3-f2efee432939',
+        ownerId: 'doctor-1',
+        consentimientoAt: consentDate,
+        fechaGuardado: date,
+      );
+      final model = AssessmentModel(record: record);
+      final local = model.toMap();
+      final payload = model.toRemoteJson();
+      final restored = AssessmentModel.fromMap(local).record;
+
+      expect(local['consentimiento_datos'], 1);
+      expect(local['ubicacion_capturada_at'], '2026-11-11T20:10:00.000Z');
+      expect(local['consentimiento_at'], '2026-11-11T20:12:00.000Z');
+      expect(payload['consentimiento_datos'], isTrue);
+      expect(payload['nombre_paciente'], 'Paciente de prueba');
+      expect(payload['direccion_paciente'], 'Barrio Centro');
+      expect(payload['latitud'], 10.4631);
+      expect(payload['longitud'], -73.2532);
+      expect(payload['precision_gps_m'], 8.4);
+      expect(payload['ubicacion_capturada_at'], '2026-11-11T20:10:00.000Z');
+      expect(payload['consentimiento_at'], '2026-11-11T20:12:00.000Z');
+      expect(restored.patient.consentimientoDatos, isTrue);
+      expect(restored.patient.nombrePaciente, 'Paciente de prueba');
+      expect(restored.patient.latitud, 10.4631);
+      expect(restored.consentimientoAt, DateTime.utc(2026, 11, 11, 20, 12));
+    },
+  );
 }
