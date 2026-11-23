@@ -244,6 +244,7 @@ class _PatientRecordDetailPageState extends State<PatientRecordDetailPage> {
                   _isGeneratingPdf ? 'Generando PDF…' : 'Descargar PDF',
                 ),
               ),
+              const SizedBox(height: 10),
                   OutlinedButton(
                     onPressed: _finishConsultation,
                     child: const Text('Terminar consulta'),

@@ -8,7 +8,9 @@ import '../../../../core/constants/form_options.dart';
 import '../../../../core/network/connectivity_service.dart';
 import '../../domain/entities/remote_assessment.dart';
 import '../../domain/repositories/admin_records_repository.dart';
+import '../../domain/usecases/delete_admin_assessment_usecase.dart';
 import '../../domain/usecases/get_admin_assessments_usecase.dart';
+import '../../domain/usecases/update_admin_assessment_usecase.dart';
 
 class AdminRecordsProvider extends ChangeNotifier {
   static const int pageSize = 30;
@@ -19,11 +21,15 @@ class AdminRecordsProvider extends ChangeNotifier {
   };
 
   final GetAdminAssessmentsUseCase getAssessments;
+  final UpdateAdminAssessmentUseCase? updateAssessment;
+  final DeleteAdminAssessmentUseCase? deleteAssessment;
   final ConnectivityService connectivityService;
 
   AdminRecordsProvider({
     required this.getAssessments,
     required this.connectivityService,
+    this.updateAssessment,
+    this.deleteAssessment,
   });
 
   final List<RemoteAssessment> _records = [];
@@ -48,6 +54,9 @@ class AdminRecordsProvider extends ChangeNotifier {
 
   bool _isLoading = false;
   bool get isLoading => _isLoading;
+
+  bool _isMutating = false;
+  bool get isMutating => _isMutating;
 
   bool _hasMore = true;
   bool get hasMore => _hasMore;
@@ -102,6 +111,92 @@ class AdminRecordsProvider extends ChangeNotifier {
     await loadInitial();
   }
 
+  Future<({bool success, String message})> editAssessment(
+    String id,
+    Map<String, dynamic> updates,
+  ) async {
+    final updater = updateAssessment;
+    if (updater == null) {
+      return (
+        success: false,
+        message: 'La edición remota de registros no está configurada.',
+      );
+    }
+
+    _isMutating = true;
+    notifyListeners();
+    try {
+      if (!await connectivityService.hasInternet()) {
+        return (
+          success: false,
+          message: 'Sin conexión a internet. Conéctate e intenta de nuevo.',
+        );
+      }
+      final updated = await updater.execute(id: id, updates: updates);
+      final index = _records.indexWhere((record) => record.id == id);
+      if (index != -1) {
+        _records[index] = updated;
+      }
+      return (success: true, message: 'Registro actualizado correctamente.');
+    } on AdminPermissionException catch (error) {
+      return (success: false, message: error.message);
+    } catch (error) {
+      if (error is SocketException || error is TimeoutException) {
+        return (
+          success: false,
+          message: 'Sin conexión a internet. Conéctate e intenta de nuevo.',
+        );
+      }
+      return (
+        success: false,
+        message: 'No se pudo actualizar el registro: $error',
+      );
+    } finally {
+      _isMutating = false;
+      notifyListeners();
+    }
+  }
+
+  Future<({bool success, String message})> removeAssessment(String id) async {
+    final remover = deleteAssessment;
+    if (remover == null) {
+      return (
+        success: false,
+        message: 'La eliminación remota de registros no está configurada.',
+      );
+    }
+
+    _isMutating = true;
+    notifyListeners();
+    try {
+      if (!await connectivityService.hasInternet()) {
+        return (
+          success: false,
+          message: 'Sin conexión a internet. Conéctate e intenta de nuevo.',
+        );
+      }
+      await remover.execute(id: id);
+      _records.removeWhere((record) => record.id == id);
+      return (success: true, message: 'Registro eliminado correctamente.');
+    } on AdminPermissionException catch (error) {
+      return (success: false, message: error.message);
+    } catch (error) {
+      if (error is SocketException || error is TimeoutException) {
+        return (
+          success: false,
+          message: 'Sin conexión a internet. Conéctate e intenta de nuevo.',
+        );
+      }
+      return (
+        success: false,
+        message: 'No se pudo eliminar el registro: $error',
+      );
+    } finally {
+      _isMutating = false;
+      notifyListeners();
+    }
+  }
+
   Future<void> _loadPage({bool resetError = false}) async {
     if (_isLoading) return;
     _isLoading = true;
@@ -114,7 +209,8 @@ class AdminRecordsProvider extends ChangeNotifier {
     try {
       if (!await connectivityService.hasInternet()) {
         _isOffline = true;
-        _errorMessage = 'Sin conexión a internet. Conéctate y vuelve a intentar.';
+        _errorMessage =
+            'Sin conexión a internet. Conéctate y vuelve a intentar.';
         return;
       }
       final page = await getAssessments.execute(

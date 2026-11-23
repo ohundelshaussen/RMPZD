@@ -96,21 +96,28 @@ class _FacilitiesMapPageState extends State<FacilitiesMapPage> {
         children: [
           Container(
             width: double.infinity,
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-            color: const Color(0xFFFFF7E6),
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+            decoration: const BoxDecoration(
+              color: Color(0xFFFFFBEB),
+              border: Border(bottom: BorderSide(color: Color(0xFFFDE68A))),
+            ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 const Text(
                   facilityTransferSafetyMessage,
-                  style: TextStyle(fontWeight: FontWeight.w600),
+                  style: TextStyle(fontWeight: FontWeight.w600, fontSize: 12),
                 ),
-                const SizedBox(height: 4),
-                const Text(facilityDistanceExplanation),
+                const SizedBox(height: 3),
+                const Text(
+                  facilityDistanceExplanation,
+                  style: TextStyle(fontSize: 12),
+                ),
                 if (widget.latitude == null || widget.longitude == null) ...[
-                  const SizedBox(height: 4),
+                  const SizedBox(height: 3),
                   const Text(
                     'Sin ubicación GPS: se muestran los centros del municipio',
+                    style: TextStyle(fontSize: 12),
                   ),
                 ],
               ],
@@ -123,6 +130,11 @@ class _FacilitiesMapPageState extends State<FacilitiesMapPage> {
                   options: MapOptions(
                     initialCenter: _initialCenter,
                     initialZoom: 12,
+                    onTap: (_, _) {
+                      if (_selectedFacility != null) {
+                        setState(() => _selectedFacility = null);
+                      }
+                    },
                     initialCameraFit: points.length > 1
                         ? CameraFit.coordinates(
                             coordinates: points,
@@ -184,29 +196,12 @@ class _FacilitiesMapPageState extends State<FacilitiesMapPage> {
                             ),
                       ],
                     ),
-                    RichAttributionWidget(
-                      attributions: const [
+                    const RichAttributionWidget(
+                      attributions: [
                         TextSourceAttribution('© OpenStreetMap contributors'),
                       ],
                     ),
                   ],
-                ),
-                const Positioned(
-                  bottom: 8,
-                  right: 8,
-                  child: DecoratedBox(
-                    decoration: BoxDecoration(
-                      color: Colors.white70,
-                      borderRadius: BorderRadius.all(Radius.circular(4)),
-                    ),
-                    child: Padding(
-                      padding: EdgeInsets.symmetric(horizontal: 5, vertical: 3),
-                      child: Text(
-                        '© OpenStreetMap contributors',
-                        style: TextStyle(fontSize: 10),
-                      ),
-                    ),
-                  ),
                 ),
                 if (_selectedFacility case final facility?)
                   Align(
@@ -220,6 +215,8 @@ class _FacilitiesMapPageState extends State<FacilitiesMapPage> {
                           showDistance:
                               widget.latitude != null &&
                               widget.longitude != null,
+                          onClose: () =>
+                              setState(() => _selectedFacility = null),
                         ),
                       ),
                     ),

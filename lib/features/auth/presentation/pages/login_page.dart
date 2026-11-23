@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../../../core/constants/app_colors.dart';
 import '../../../../shared/widgets/app_logo.dart';
+import '../../../../shared/widgets/role_access_switcher.dart';
 import '../providers/auth_provider.dart';
 
 class LoginPage extends StatefulWidget {
@@ -17,6 +18,7 @@ class _LoginPageState extends State<LoginPage> {
   final _formKey = GlobalKey<FormState>();
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
+  bool _obscurePassword = true;
 
   @override
   void dispose() {
@@ -50,6 +52,9 @@ class _LoginPageState extends State<LoginPage> {
   @override
   Widget build(BuildContext context) {
     final provider = context.watch<AuthProvider>();
+    final canSwitchToPatient =
+        widget.onBackToLookup != null || Navigator.of(context).canPop();
+
     return Scaffold(
       appBar: AppBar(
         leading: widget.onBackToLookup != null
@@ -57,28 +62,23 @@ class _LoginPageState extends State<LoginPage> {
             : null,
         title: const Text('Iniciar sesión'),
       ),
-      body: Center(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.fromLTRB(24, 16, 24, 24),
+      body: SafeArea(
+        child: Center(
           child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 420),
+            constraints: const BoxConstraints(maxWidth: 460),
             child: Form(
               key: _formKey,
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
+              child: ListView(
+                padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
                 children: [
                   const AppLogo(),
                   const SizedBox(height: 12),
-                  const Text(
-                    'RMPZD',
-                    textAlign: TextAlign.center,
-                    style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w800,
-                      color: AppColors.textPrimary,
-                    ),
+                  RoleAccessSwitcher(
+                    selectedMode: AccessEntryMode.staff,
+                    onSelectPatient:
+                        canSwitchToPatient ? _handleBackToLookup : null,
                   ),
-                  const SizedBox(height: 6),
+                  const SizedBox(height: 10),
                   const Text(
                     'Acceso exclusivo para médicos y administradores autorizados',
                     textAlign: TextAlign.center,
@@ -87,58 +87,79 @@ class _LoginPageState extends State<LoginPage> {
                       color: AppColors.textSecondary,
                     ),
                   ),
-                  const SizedBox(height: 24),
-                  TextFormField(
-                    controller: _emailController,
-                    keyboardType: TextInputType.emailAddress,
-                    autofillHints: const [AutofillHints.username],
-                    decoration: const InputDecoration(
-                      labelText: 'Correo electrónico',
-                      prefixIcon: Icon(Icons.email_outlined),
-                    ),
-                    validator: (value) => value == null || value.trim().isEmpty
-                        ? 'Ingrese su correo electrónico'
-                        : null,
-                  ),
-                  const SizedBox(height: 12),
-                  TextFormField(
-                    controller: _passwordController,
-                    obscureText: true,
-                    autofillHints: const [AutofillHints.password],
-                    decoration: const InputDecoration(
-                      labelText: 'Contraseña',
-                      prefixIcon: Icon(Icons.lock_outline),
-                    ),
-                    validator: (value) => value == null || value.isEmpty
-                        ? 'Ingrese su contraseña'
-                        : null,
-                    onFieldSubmitted: (_) => _submit(),
-                  ),
-                  if (provider.errorMessage != null) ...[
-                    const SizedBox(height: 12),
-                    Text(
-                      provider.errorMessage!,
-                      textAlign: TextAlign.center,
-                      style: const TextStyle(color: AppColors.riskHigh),
-                    ),
-                  ],
-                  const SizedBox(height: 20),
-                  ElevatedButton(
-                    onPressed: provider.isBusy ? null : _submit,
-                    child: provider.isBusy
-                        ? const SizedBox(
-                            width: 20,
-                            height: 20,
-                            child: CircularProgressIndicator(
-                              color: Colors.white,
-                              strokeWidth: 2,
+                  const SizedBox(height: 14),
+                  Card(
+                    child: Padding(
+                      padding: const EdgeInsets.all(14),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          TextFormField(
+                            controller: _emailController,
+                            keyboardType: TextInputType.emailAddress,
+                            autofillHints: const [AutofillHints.username],
+                            decoration: const InputDecoration(
+                              labelText: 'Correo electrónico',
+                              prefixIcon: Icon(Icons.email_outlined),
                             ),
-                          )
-                        : const Text('INICIAR SESIÓN'),
-                  ),
-                  TextButton(
-                    onPressed: _handleBackToLookup,
-                    child: const Text('Volver a la consulta'),
+                            validator: (value) =>
+                                value == null || value.trim().isEmpty
+                                ? 'Ingrese su correo electrónico'
+                                : null,
+                          ),
+                          const SizedBox(height: 12),
+                          TextFormField(
+                            controller: _passwordController,
+                            obscureText: _obscurePassword,
+                            autofillHints: const [AutofillHints.password],
+                            decoration: InputDecoration(
+                              labelText: 'Contraseña',
+                              prefixIcon: const Icon(Icons.lock_outline),
+                              suffixIcon: IconButton(
+                                tooltip: _obscurePassword
+                                    ? 'Mostrar contraseña'
+                                    : 'Ocultar contraseña',
+                                onPressed: () => setState(
+                                  () => _obscurePassword = !_obscurePassword,
+                                ),
+                                icon: Icon(
+                                  _obscurePassword
+                                      ? Icons.visibility_outlined
+                                      : Icons.visibility_off_outlined,
+                                ),
+                              ),
+                            ),
+                            validator: (value) =>
+                                value == null || value.isEmpty
+                                ? 'Ingrese su contraseña'
+                                : null,
+                            onFieldSubmitted: (_) => _submit(),
+                          ),
+                          if (provider.errorMessage != null) ...[
+                            const SizedBox(height: 12),
+                            Text(
+                              provider.errorMessage!,
+                              textAlign: TextAlign.center,
+                              style: const TextStyle(color: AppColors.riskHigh),
+                            ),
+                          ],
+                          const SizedBox(height: 16),
+                          ElevatedButton(
+                            onPressed: provider.isBusy ? null : _submit,
+                            child: provider.isBusy
+                                ? const SizedBox(
+                                    width: 20,
+                                    height: 20,
+                                    child: CircularProgressIndicator(
+                                      color: Colors.white,
+                                      strokeWidth: 2,
+                                    ),
+                                  )
+                                : const Text('INICIAR SESIÓN'),
+                          ),
+                        ],
+                      ),
+                    ),
                   ),
                 ],
               ),

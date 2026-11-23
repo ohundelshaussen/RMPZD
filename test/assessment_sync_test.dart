@@ -173,6 +173,63 @@ void main() {
     );
   });
 
+  test('migrates version 5 by adding full probability columns', () async {
+    final db = await databaseFactoryFfi.openDatabase(inMemoryDatabasePath);
+    addTearDown(db.close);
+    await DatabaseHelper.createV5Schema(db);
+
+    await DatabaseHelper.migrateV5ToV6(db);
+
+    final columns = await db.rawQuery('PRAGMA table_info(assessments)');
+    expect(
+      columns.map((column) => column['name']),
+      containsAll(['probabilidad_riesgo_medio', 'probabilidad_riesgo_bajo']),
+    );
+  });
+
+  test('updates and deletes local assessments while preserving uuid', () async {
+    final (database, _, _, repository) = await _createLocalStore();
+    addTearDown(database.close);
+    final saved = await repository.saveAssessment(
+      _patient('editable', consentimientoDatos: true, nombrePaciente: 'Inicial'),
+      _result,
+      ownerId: 'doctor-1',
+    );
+
+    final updatedPatient = _patient(
+      'editable-2',
+      consentimientoDatos: true,
+      nombrePaciente: 'Actualizada',
+      direccionPaciente: 'Vereda Norte',
+    );
+    const updatedResult = TriageResult(
+      riskLevel: RiskLevel.medio,
+      probAlto: 0.2,
+      probMedio: 0.65,
+      probBajo: 0.15,
+      riesgoDesenlaceAdverso: false,
+      probDesenlaceAdverso: 0.18,
+      clinicalAlerts: [],
+      hasImmediateEmergency: false,
+    );
+
+    final updated = await repository.updateAssessment(
+      saved,
+      updatedPatient,
+      updatedResult,
+    );
+
+    expect(updated.uuid, saved.uuid);
+    expect(updated.consultationCode, saved.consultationCode);
+    expect(updated.patient.patientId, 'editable-2');
+    expect(updated.patient.nombrePaciente, 'Actualizada');
+    expect(updated.result.probMedio, 0.65);
+    expect(updated.result.probBajo, 0.15);
+
+    await repository.deleteAssessment(uuid: saved.uuid);
+    expect(await repository.getHistory(ownerId: 'doctor-1'), isEmpty);
+  });
+
   test('history and pending counts are scoped to the current owner', () async {
     final (database, _, local, repository) = await _createLocalStore();
     addTearDown(database.close);
@@ -433,8 +490,8 @@ _createLocalStore() async {
   final database = await databaseFactoryFfi.openDatabase(
     inMemoryDatabasePath,
     options: OpenDatabaseOptions(
-      version: 5,
-      onCreate: (db, version) => DatabaseHelper.createV5Schema(db),
+      version: 6,
+      onCreate: (db, version) => DatabaseHelper.createV6Schema(db),
     ),
   );
   final helper = DatabaseHelper.forDatabase(database);
@@ -487,6 +544,15 @@ class _FakeRemoteDataSource implements AssessmentRemoteDataSource {
       throw const _NetworkFailure();
     }
   }
+
+  @override
+  Future<bool> updateAssessment(
+    String uuid,
+    Map<String, dynamic> payload,
+  ) async => true;
+
+  @override
+  Future<bool> deleteAssessment(String uuid) async => true;
 
   @override
   bool isClientFailure(Object error) => error is _ClientFailure;

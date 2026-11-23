@@ -55,6 +55,11 @@ class ResultStatusCard extends StatelessWidget {
       }
     }
 
+    final trimmedName = patient.nombrePaciente?.trim() ?? '';
+    final identitySummary = trimmedName.isNotEmpty
+        ? '$trimmedName • ${patient.patientId} • ${patient.municipio}'
+        : '${patient.patientId} • ${patient.etnia} • ${patient.municipio}';
+
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
@@ -105,7 +110,8 @@ class ResultStatusCard extends StatelessWidget {
               border: Border.all(color: const Color(0xFFE2E8F0)),
             ),
             child: Text(
-              '${patient.patientId} • ${patient.etnia} • ${patient.municipio}',
+              identitySummary,
+              textAlign: TextAlign.center,
               style: const TextStyle(
                 color: AppColors.textPrimary,
                 fontSize: 12,

@@ -20,4 +20,21 @@ class AdminRecordsRepositoryImpl implements AdminRecordsRepository {
     );
     return rows.map(RemoteAssessment.fromJson).toList();
   }
+
+  @override
+  Future<RemoteAssessment> updateAssessment({
+    required String id,
+    required Map<String, dynamic> updates,
+  }) async {
+    final row = await _remoteDataSource.updateAssessment(
+      id: id,
+      updates: updates,
+    );
+    return RemoteAssessment.fromJson(row);
+  }
+
+  @override
+  Future<void> deleteAssessment({required String id}) async {
+    await _remoteDataSource.deleteAssessment(id: id);
+  }
 }

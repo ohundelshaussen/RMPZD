@@ -10,6 +10,7 @@ class DatabaseHelper {
   static String _createAssessmentsTable({
     required bool withConsultationCode,
     bool withIdentityFields = false,
+    bool withFullProbabilities = false,
   }) =>
       '''
     CREATE TABLE assessments (
@@ -52,7 +53,9 @@ class DatabaseHelper {
       precision_gps_m REAL,
       ubicacion_capturada_at TEXT,
       consentimiento_datos INTEGER NOT NULL DEFAULT 0,
-      consentimiento_at TEXT''' : ''}
+      consentimiento_at TEXT''' : ''}${withFullProbabilities ? ''',
+      probabilidad_riesgo_medio REAL NOT NULL DEFAULT 0,
+      probabilidad_riesgo_bajo REAL NOT NULL DEFAULT 0''' : ''}
     )
   ''';
 
@@ -111,14 +114,14 @@ class DatabaseHelper {
 
     return await openDatabase(
       path,
-      version: 5,
+      version: 6,
       onCreate: _createDB,
       onUpgrade: _onUpgrade,
     );
   }
 
   Future<void> _createDB(Database db, int version) async {
-    await createV5Schema(db);
+    await createV6Schema(db);
   }
 
   @visibleForTesting
@@ -156,6 +159,21 @@ class DatabaseHelper {
     await _createHealthFacilities(db);
   }
 
+  @visibleForTesting
+  static Future<void> createV6Schema(DatabaseExecutor db) async {
+    await db.execute(
+      _createAssessmentsTable(
+        withConsultationCode: true,
+        withIdentityFields: true,
+        withFullProbabilities: true,
+      ),
+    );
+    await db.execute(
+      'CREATE UNIQUE INDEX idx_assessments_uuid ON assessments(uuid)',
+    );
+    await _createHealthFacilities(db);
+  }
+
   Future<void> _onUpgrade(Database db, int oldVersion, int newVersion) async {
     for (var version = oldVersion; version < newVersion; version++) {
       switch (version) {
@@ -170,6 +188,9 @@ class DatabaseHelper {
           break;
         case 4:
           await migrateV4ToV5(db);
+          break;
+        case 5:
+          await migrateV5ToV6(db);
           break;
       }
     }
@@ -203,6 +224,16 @@ class DatabaseHelper {
   @visibleForTesting
   static Future<void> migrateV4ToV5(DatabaseExecutor db) async {
     await _createHealthFacilities(db);
+  }
+
+  @visibleForTesting
+  static Future<void> migrateV5ToV6(DatabaseExecutor db) async {
+    await db.execute(
+      'ALTER TABLE assessments ADD COLUMN probabilidad_riesgo_medio REAL NOT NULL DEFAULT 0',
+    );
+    await db.execute(
+      'ALTER TABLE assessments ADD COLUMN probabilidad_riesgo_bajo REAL NOT NULL DEFAULT 0',
+    );
   }
 
   static Future<void> _createHealthFacilities(DatabaseExecutor db) async {

@@ -14,5 +14,8 @@ void main() {
       ConsultationCodeGenerator.format(codes.first),
       '${codes.first.substring(0, 4)}-${codes.first.substring(4)}',
     );
+    expect(ConsultationCodeGenerator.normalize('abcd-2345'), 'ABCD2345');
+    expect(ConsultationCodeGenerator.format('abcd-2345'), 'ABCD-2345');
+    expect(ConsultationCodeGenerator.format('SHORT'), 'SHORT');
   });
 }

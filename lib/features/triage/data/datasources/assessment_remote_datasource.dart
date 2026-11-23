@@ -3,8 +3,21 @@ import 'dart:io';
 
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+class RemotePermissionException implements Exception {
+  final String message;
+
+  const RemotePermissionException(this.message);
+
+  @override
+  String toString() => message;
+}
+
 abstract interface class AssessmentRemoteDataSource {
   Future<void> upsertBatch(List<Map<String, dynamic>> payload);
+
+  Future<bool> updateAssessment(String uuid, Map<String, dynamic> payload);
+
+  Future<bool> deleteAssessment(String uuid);
 
   bool isNetworkFailure(Object error);
 
@@ -25,6 +38,51 @@ class SupabaseAssessmentRemoteDataSource implements AssessmentRemoteDataSource {
     await supabase
         .from('assessments')
         .upsert(payload, onConflict: 'id', ignoreDuplicates: true);
+  }
+
+  @override
+  Future<bool> updateAssessment(
+    String uuid,
+    Map<String, dynamic> payload,
+  ) async {
+    final supabase = client;
+    if (supabase == null) {
+      throw StateError('Supabase no está inicializado.');
+    }
+    final mutable = Map<String, dynamic>.from(payload)
+      ..remove('id')
+      ..remove('created_by')
+      ..remove('codigo_consulta');
+    try {
+      final rows = await supabase
+          .from('assessments')
+          .update(mutable)
+          .eq('id', uuid)
+          .select('id');
+      return rows.isNotEmpty;
+    } on PostgrestException catch (error) {
+      if (error.code == '42501') return false;
+      rethrow;
+    }
+  }
+
+  @override
+  Future<bool> deleteAssessment(String uuid) async {
+    final supabase = client;
+    if (supabase == null) {
+      throw StateError('Supabase no está inicializado.');
+    }
+    try {
+      final rows = await supabase
+          .from('assessments')
+          .delete()
+          .eq('id', uuid)
+          .select('id');
+      return rows.isNotEmpty;
+    } on PostgrestException catch (error) {
+      if (error.code == '42501') return false;
+      rethrow;
+    }
   }
 
   @override

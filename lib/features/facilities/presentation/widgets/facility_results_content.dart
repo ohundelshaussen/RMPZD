@@ -62,19 +62,38 @@ class FacilityResultsContent extends StatelessWidget {
         Container(
           padding: const EdgeInsets.all(12),
           decoration: BoxDecoration(
-            color: const Color(0xFFFFF7E6),
+            color: const Color(0xFFFFFBEB),
             borderRadius: BorderRadius.circular(10),
-            border: Border.all(color: const Color(0xFFFFD98A)),
+            border: Border.all(color: const Color(0xFFFDE68A)),
           ),
-          child: const Column(
+          child: const Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(
-                facilityTransferSafetyMessage,
-                style: TextStyle(fontWeight: FontWeight.w700),
+              Icon(
+                Icons.info_outline_rounded,
+                size: 18,
+                color: Color(0xFFB45309),
               ),
-              SizedBox(height: 5),
-              Text(facilityDistanceExplanation),
+              SizedBox(width: 8),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      facilityTransferSafetyMessage,
+                      style: TextStyle(
+                        fontWeight: FontWeight.w700,
+                        fontSize: 12,
+                      ),
+                    ),
+                    SizedBox(height: 4),
+                    Text(
+                      facilityDistanceExplanation,
+                      style: TextStyle(fontSize: 12),
+                    ),
+                  ],
+                ),
+              ),
             ],
           ),
         ),

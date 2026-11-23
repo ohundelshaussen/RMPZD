@@ -12,6 +12,13 @@ class ConsultationCodeGenerator {
     (_) => alphabet[_random.nextInt(alphabet.length)],
   ).join();
 
-  static String format(String code) =>
-      code.length == 8 ? '${code.substring(0, 4)}-${code.substring(4)}' : code;
+  static String normalize(String code) =>
+      code.replaceAll(RegExp(r'[-\s]'), '').trim().toUpperCase();
+
+  static String format(String code) {
+    final normalized = normalize(code);
+    return normalized.length == 8
+        ? '${normalized.substring(0, 4)}-${normalized.substring(4)}'
+        : code.trim();
+  }
 }

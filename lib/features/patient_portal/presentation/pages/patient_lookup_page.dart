@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 
 import '../../../../core/constants/app_colors.dart';
 import '../../../../shared/widgets/app_logo.dart';
+import '../../../../shared/widgets/role_access_switcher.dart';
 import '../../../auth/presentation/pages/login_page.dart';
 import '../../domain/usecases/lookup_patient_records_usecase.dart';
 import '../providers/patient_portal_provider.dart';
@@ -128,123 +129,21 @@ class _PatientLookupPageState extends State<PatientLookupPage> {
                   children: [
                     const AppLogo(),
                     const SizedBox(height: 12),
-                    const Text(
-                      'RMPZD',
-                      textAlign: TextAlign.center,
-                      style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w800,
-                      ),
+                    RoleAccessSwitcher(
+                      selectedMode: AccessEntryMode.patient,
+                      onSelectStaff: _openStaffLogin,
                     ),
-                    const SizedBox(height: 8),
-                    Container(
-                      padding: const EdgeInsets.all(3),
-                      decoration: BoxDecoration(
-                        color: AppColors.surfaceVariant,
-                        borderRadius: BorderRadius.circular(12),
-                        border: Border.all(color: AppColors.border),
-                      ),
-                      child: Row(
-                        children: [
-                          Expanded(
-                            child: Container(
-                              padding: const EdgeInsets.symmetric(
-                                vertical: 7,
-                                horizontal: 8,
-                              ),
-                              decoration: BoxDecoration(
-                                color: AppColors.surface,
-                                borderRadius: BorderRadius.circular(9),
-                                border: Border.all(
-                                  color: AppColors.primary.withValues(
-                                    alpha: 0.25,
-                                  ),
-                                ),
-                              ),
-                              child: const Row(
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                children: [
-                                  Icon(
-                                    Icons.person_search_rounded,
-                                    size: 16,
-                                    color: AppColors.primary,
-                                  ),
-                                  SizedBox(width: 6),
-                                  Flexible(
-                                    child: Text(
-                                      'Soy Paciente',
-                                      maxLines: 1,
-                                      overflow: TextOverflow.ellipsis,
-                                      style: TextStyle(
-                                        fontSize: 13,
-                                        fontWeight: FontWeight.w700,
-                                        color: AppColors.primary,
-                                      ),
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ),
-                          const SizedBox(width: 4),
-                          Expanded(
-                            child: InkWell(
-                              borderRadius: BorderRadius.circular(9),
-                              onTap: _openStaffLogin,
-                              child: const Padding(
-                                padding: EdgeInsets.symmetric(
-                                  vertical: 7,
-                                  horizontal: 8,
-                                ),
-                                child: Row(
-                                  mainAxisAlignment: MainAxisAlignment.center,
-                                  children: [
-                                    Icon(
-                                      Icons.medical_services_outlined,
-                                      size: 16,
-                                      color: AppColors.textSecondary,
-                                    ),
-                                    SizedBox(width: 6),
-                                    Flexible(
-                                      child: Text(
-                                        'Personal de Salud',
-                                        maxLines: 1,
-                                        overflow: TextOverflow.ellipsis,
-                                        style: TextStyle(
-                                          fontSize: 13,
-                                          fontWeight: FontWeight.w600,
-                                          color: AppColors.textSecondary,
-                                        ),
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    const SizedBox(height: 8),
+                    const SizedBox(height: 10),
                     const Text(
-                      'Consulte su resultado con su número de ID y el código que '
-                      'le entregó su médico',
+                      'Consulte su resultado con su número de ID y código '
+                      '(requiere internet).',
                       textAlign: TextAlign.center,
                       style: TextStyle(
                         fontSize: 13,
                         color: AppColors.textSecondary,
                       ),
                     ),
-                    const SizedBox(height: 4),
-                    const Text(
-                      'La consulta de resultados requiere una conexión activa a internet.',
-                      textAlign: TextAlign.center,
-                      style: TextStyle(
-                        fontSize: 12,
-                        color: AppColors.textSecondary,
-                      ),
-                    ),
-                    const SizedBox(height: 10),
+                    const SizedBox(height: 12),
                     Card(
                       child: Padding(
                         padding: const EdgeInsets.all(14),

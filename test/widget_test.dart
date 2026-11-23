@@ -94,9 +94,9 @@ void main() {
       await tester.tap(find.text('Personal de Salud'));
       await tester.pumpAndSettle();
       expect(find.text('Iniciar sesión'), findsOneWidget);
-      expect(find.text('Volver a la consulta'), findsOneWidget);
+      expect(find.text('Soy Paciente'), findsOneWidget);
 
-      await tester.tap(find.text('Volver a la consulta'));
+      await tester.tap(find.text('Soy Paciente'));
       await tester.pumpAndSettle();
       expect(find.text('Consulta de resultados'), findsOneWidget);
 
@@ -308,6 +308,28 @@ class _FakeAssessmentRepository implements AssessmentRepository {
       fechaGuardado: patient.fechaEvaluacion,
     );
   }
+
+  @override
+  Future<AssessmentRecord> updateAssessment(
+    AssessmentRecord existingRecord,
+    PatientAssessment updatedPatient,
+    TriageResult updatedResult,
+  ) async {
+    return AssessmentRecord(
+      patient: updatedPatient,
+      result: updatedResult,
+      idLocal: existingRecord.idLocal,
+      uuid: existingRecord.uuid,
+      ownerId: existingRecord.ownerId,
+      syncStatus: existingRecord.syncStatus,
+      consultationCode: existingRecord.consultationCode,
+      consentimientoAt: existingRecord.consentimientoAt,
+      fechaGuardado: existingRecord.fechaGuardado,
+    );
+  }
+
+  @override
+  Future<void> deleteAssessment({required String uuid}) async {}
 }
 
 class _FakePatientRecordsLookup implements PatientRecordsLookup {

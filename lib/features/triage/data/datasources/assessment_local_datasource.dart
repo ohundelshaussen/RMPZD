@@ -32,6 +32,35 @@ class AssessmentLocalDataSource {
     );
   }
 
+  Future<AssessmentModel> updateAssessment(AssessmentModel assessment) async {
+    final db = await dbHelper.database;
+    final nowIso = DateTime.now().toUtc().toIso8601String();
+    final map = Map<String, dynamic>.from(assessment.toMap())
+      ..remove('id')
+      ..remove('uuid')
+      ..remove('owner_id')
+      ..remove('codigo_consulta')
+      ..remove('fecha_evaluacion')
+      ..remove('sync_attempts')
+      ..['updated_at'] = nowIso;
+    await db.update(
+      'assessments',
+      map,
+      where: 'uuid = ?',
+      whereArgs: [assessment.record.uuid],
+    );
+    return AssessmentModel(
+      record: assessment.record,
+      syncAttempts: assessment.syncAttempts,
+      updatedAt: DateTime.parse(nowIso),
+    );
+  }
+
+  Future<void> deleteAssessment(String uuid) async {
+    final db = await dbHelper.database;
+    await db.delete('assessments', where: 'uuid = ?', whereArgs: [uuid]);
+  }
+
   Future<List<AssessmentModel>> getAssessments(String ownerId) async {
     final db = await dbHelper.database;
     await assignUnownedRecords(ownerId);

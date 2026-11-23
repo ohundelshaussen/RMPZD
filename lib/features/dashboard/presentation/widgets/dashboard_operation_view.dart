@@ -61,39 +61,56 @@ class _DashboardOperationViewState extends State<DashboardOperationView> {
   }
 
   Widget _filters(DashboardProvider provider) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Wrap(
-          spacing: 6,
-          runSpacing: 4,
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(12),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            for (final period in DashboardPeriod.values)
-              ChoiceChip(
-                label: Text(period.label),
-                selected: provider.filter.period == period,
-                onSelected: (_) => provider.setPeriod(period),
+            const Text(
+              'Filtros del tablero',
+              style: TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w700,
+                color: AppColors.textSecondary,
               ),
+            ),
+            const SizedBox(height: 8),
+            Wrap(
+              spacing: 6,
+              runSpacing: 4,
+              children: [
+                for (final period in DashboardPeriod.values)
+                  ChoiceChip(
+                    label: Text(period.label),
+                    selected: provider.filter.period == period,
+                    onSelected: (_) => provider.setPeriod(period),
+                  ),
+              ],
+            ),
+            const SizedBox(height: 10),
+            DropdownButtonFormField<String?>(
+              key: ValueKey(provider.filter.department),
+              initialValue: provider.filter.department,
+              isExpanded: true,
+              decoration: const InputDecoration(labelText: 'Departamento'),
+              items: [
+                const DropdownMenuItem<String?>(
+                  value: null,
+                  child: Text('Todos'),
+                ),
+                for (final department
+                    in provider.stats?.departmentOptions ?? const <String>[])
+                  DropdownMenuItem<String?>(
+                    value: department,
+                    child: Text(department, overflow: TextOverflow.ellipsis),
+                  ),
+              ],
+              onChanged: provider.setDepartment,
+            ),
           ],
         ),
-        const SizedBox(height: 8),
-        DropdownButtonFormField<String?>(
-          key: ValueKey(provider.filter.department),
-          initialValue: provider.filter.department,
-          isExpanded: true,
-          decoration: const InputDecoration(labelText: 'Departamento'),
-          items: [
-            const DropdownMenuItem<String?>(value: null, child: Text('Todos')),
-            for (final department
-                in provider.stats?.departmentOptions ?? const <String>[])
-              DropdownMenuItem<String?>(
-                value: department,
-                child: Text(department, overflow: TextOverflow.ellipsis),
-              ),
-          ],
-          onChanged: provider.setDepartment,
-        ),
-      ],
+      ),
     );
   }
 

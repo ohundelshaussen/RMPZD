@@ -46,15 +46,18 @@ class TriageResultPage extends StatelessWidget {
                 const SizedBox(height: 16),
                 AiProbabilityCard(result: result),
                 const SizedBox(height: 16),
-                ClinicalAlertSection(alerts: result.clinicalAlerts),
-                const SizedBox(height: 16),
-                RiskFacilitiesRecommendations(
-                  riskLevel: result.riskLevel,
-                  latitude: patient.latitud,
-                  longitude: patient.longitud,
-                  department: patient.departamento,
-                  municipality: patient.municipio,
-                ),
+                if (result.clinicalAlerts.isNotEmpty)
+                  ClinicalAlertSection(alerts: result.clinicalAlerts),
+                if (result.riskLevel.name != 'bajo') ...[
+                  RiskFacilitiesRecommendations(
+                    riskLevel: result.riskLevel,
+                    latitude: patient.latitud,
+                    longitude: patient.longitud,
+                    department: patient.departamento,
+                    municipality: patient.municipio,
+                  ),
+                  const SizedBox(height: 16),
+                ],
                 if (provider.isSaved) ...[
                   if (provider.savedAssessment?.consultationCode
                       case final consultationCode?) ...[
@@ -83,8 +86,8 @@ class TriageResultPage extends StatelessWidget {
                         : const Icon(Icons.check_rounded, size: 20),
                     label: Text(
                       provider.isSaving
-                          ? 'GUARDANDO...'
-                          : 'GUARDAR EN REGISTRO LOCAL',
+                          ? 'Guardando...'
+                          : 'Guardar evaluación',
                     ),
                     onPressed: provider.isSaving
                         ? null

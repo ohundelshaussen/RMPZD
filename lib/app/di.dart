@@ -22,8 +22,14 @@ import '../features/auth/domain/entities/user_profile.dart';
 import '../features/admin_records/data/datasources/admin_records_remote_datasource.dart';
 import '../features/admin_records/data/repositories/admin_records_repository_impl.dart';
 import '../features/admin_records/domain/repositories/admin_records_repository.dart';
+import '../features/admin_records/domain/usecases/delete_admin_assessment_usecase.dart';
 import '../features/admin_records/domain/usecases/get_admin_assessments_usecase.dart';
+import '../features/admin_records/domain/usecases/update_admin_assessment_usecase.dart';
 import '../features/admin_records/presentation/providers/admin_records_provider.dart';
+import '../features/admin_users/data/datasources/admin_users_remote_datasource.dart';
+import '../features/admin_users/data/repositories/admin_users_repository_impl.dart';
+import '../features/admin_users/domain/repositories/admin_users_repository.dart';
+import '../features/admin_users/presentation/providers/admin_users_provider.dart';
 import '../features/dashboard/data/datasources/dashboard_local_cache.dart';
 import '../features/dashboard/data/datasources/dashboard_remote_data_source.dart';
 import '../features/dashboard/data/repositories/dashboard_repository_impl.dart';
@@ -52,10 +58,12 @@ import '../features/triage/data/repositories/assessment_repository_impl.dart';
 import '../features/triage/data/services/hybrid_risk_classifier.dart';
 import '../features/triage/domain/repositories/assessment_repository.dart';
 import '../features/triage/domain/services/risk_classifier.dart';
+import '../features/triage/domain/usecases/delete_assessment_usecase.dart';
 import '../features/triage/domain/usecases/evaluate_maternal_risk_usecase.dart';
 import '../features/triage/domain/usecases/get_assessment_history_usecase.dart';
 import '../features/triage/domain/usecases/get_unsynced_count_usecase.dart';
 import '../features/triage/domain/usecases/save_assessment_usecase.dart';
+import '../features/triage/domain/usecases/update_assessment_usecase.dart';
 import '../features/triage/presentation/providers/triage_provider.dart';
 
 List<SingleChildWidget> createAppProviders({
@@ -133,10 +141,35 @@ List<SingleChildWidget> createAppProviders({
       create: (context) =>
           GetAdminAssessmentsUseCase(context.read<AdminRecordsRepository>()),
     ),
+    Provider<UpdateAdminAssessmentUseCase>(
+      create: (context) =>
+          UpdateAdminAssessmentUseCase(context.read<AdminRecordsRepository>()),
+    ),
+    Provider<DeleteAdminAssessmentUseCase>(
+      create: (context) =>
+          DeleteAdminAssessmentUseCase(context.read<AdminRecordsRepository>()),
+    ),
     ChangeNotifierProvider<AdminRecordsProvider>(
       create: (context) => AdminRecordsProvider(
         getAssessments: context.read<GetAdminAssessmentsUseCase>(),
+        updateAssessment: context.read<UpdateAdminAssessmentUseCase>(),
+        deleteAssessment: context.read<DeleteAdminAssessmentUseCase>(),
         connectivityService: context.read<ConnectivityService>(),
+      ),
+    ),
+    Provider<AdminUsersRemoteDataSource>(
+      create: (_) =>
+          SupabaseAdminUsersRemoteDataSource(client: supabaseClient),
+    ),
+    Provider<AdminUsersRepository>(
+      create: (context) =>
+          AdminUsersRepositoryImpl(context.read<AdminUsersRemoteDataSource>()),
+    ),
+    ChangeNotifierProvider<AdminUsersProvider>(
+      create: (context) => AdminUsersProvider(
+        repository: context.read<AdminUsersRepository>(),
+        connectivityService: context.read<ConnectivityService>(),
+        currentUserId: () => context.read<AuthProvider>().profile?.id,
       ),
     ),
     Provider<DashboardRemoteDataSource>(
@@ -233,6 +266,14 @@ List<SingleChildWidget> createAppProviders({
       create: (context) =>
           SaveAssessmentUseCase(context.read<AssessmentRepository>()),
     ),
+    Provider<UpdateAssessmentUseCase>(
+      create: (context) =>
+          UpdateAssessmentUseCase(context.read<AssessmentRepository>()),
+    ),
+    Provider<DeleteAssessmentUseCase>(
+      create: (context) =>
+          DeleteAssessmentUseCase(context.read<AssessmentRepository>()),
+    ),
     Provider<GetAssessmentHistoryUseCase>(
       create: (context) =>
           GetAssessmentHistoryUseCase(context.read<AssessmentRepository>()),
@@ -255,6 +296,12 @@ List<SingleChildWidget> createAppProviders({
         getAssessmentHistory: context.read<GetAssessmentHistoryUseCase>(),
         getUnsyncedCount: context.read<GetUnsyncedCountUseCase>(),
         currentOwnerId: () => context.read<AuthProvider>().profile?.id,
+        evaluateMaternalRisk: context.read<EvaluateMaternalRiskUseCase>(),
+        updateAssessment: context.read<UpdateAssessmentUseCase>(),
+        deleteAssessment: context.read<DeleteAssessmentUseCase>(),
+        remoteDataSource: context.read<AssessmentRemoteDataSource>(),
+        onHistoryMutated: () =>
+            context.read<SyncProvider>().refreshPendingCount(),
       ),
     ),
     ChangeNotifierProvider<SyncProvider>(

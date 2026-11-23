@@ -7,6 +7,7 @@ import 'package:rmpzd/features/facilities/domain/entities/health_facility.dart';
 import 'package:rmpzd/features/facilities/domain/repositories/facility_repository.dart';
 import 'package:rmpzd/features/facilities/domain/usecases/get_facility_catalog_status_usecase.dart';
 import 'package:rmpzd/features/facilities/domain/usecases/get_nearest_facilities_usecase.dart';
+import 'package:rmpzd/features/facilities/presentation/pages/facilities_map_page.dart';
 import 'package:rmpzd/features/facilities/presentation/providers/nearest_facilities_provider.dart';
 import 'package:rmpzd/features/facilities/presentation/services/facility_link_launcher.dart';
 import 'package:rmpzd/features/facilities/presentation/widgets/health_facility_list_item.dart';
@@ -234,6 +235,39 @@ void main() {
     expect(tester.takeException(), isNull);
     expect(find.text('Cómo llegar'), findsOneWidget);
   });
+
+  testWidgets(
+    'FacilitiesMapPage renders single OpenStreetMap attribution and dismisses selected card',
+    (tester) async {
+      final facility = _facility(distanceKm: 1.5);
+      await tester.pumpWidget(
+        MaterialApp(
+          home: FacilitiesMapPage(
+            facilities: [facility],
+            latitude: 11.4,
+            longitude: -72.8,
+            isOnline: true,
+            catalogAvailable: true,
+            launcher: const _UnusedFacilityLinkLauncher(),
+          ),
+        ),
+      );
+      await tester.pump();
+
+      expect(find.byType(RichAttributionWidget), findsOneWidget);
+      expect(find.text('© OpenStreetMap contributors'), findsNothing);
+      expect(find.byTooltip('Cerrar detalle'), findsNothing);
+
+      await tester.tap(find.text('1'));
+      await tester.pump();
+      expect(find.text('Hospital de prueba'), findsOneWidget);
+      expect(find.byTooltip('Cerrar detalle'), findsOneWidget);
+
+      await tester.tap(find.byTooltip('Cerrar detalle'));
+      await tester.pump();
+      expect(find.text('Hospital de prueba'), findsNothing);
+    },
+  );
 }
 
 Widget _app(NearestFacilitiesProvider provider, Widget child) {

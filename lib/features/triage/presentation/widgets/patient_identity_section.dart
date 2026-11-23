@@ -419,48 +419,99 @@ class _PatientIdentitySectionState extends State<PatientIdentitySection> {
                 ),
                 if (_captureStatus == _CaptureStatus.captured &&
                     _location != null) ...[
-                  const SizedBox(height: 8),
-                  Text(
-                    'Latitud: ${_location!.latitude.toStringAsFixed(5)} · '
-                    'Longitud: ${_location!.longitude.toStringAsFixed(5)}',
-                  ),
-                  Text(
-                    'Precisión: ${_location!.accuracyMeters.toStringAsFixed(1)} m',
-                  ),
-                  if (_location!.accuracyMeters > 100)
-                    const Padding(
-                      padding: EdgeInsets.only(top: 6),
-                      child: Text(
-                        'Precisión baja, intente al aire libre',
-                        style: TextStyle(color: Colors.deepOrange),
-                      ),
+                  const SizedBox(height: 10),
+                  Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFF0FDF4),
+                      borderRadius: BorderRadius.circular(10),
+                      border: Border.all(color: const Color(0xFFBBF7D0)),
                     ),
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Icon(
+                          Icons.location_on_rounded,
+                          size: 18,
+                          color: Color(0xFF15803D),
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'Latitud: ${_location!.latitude.toStringAsFixed(5)} · '
+                                'Longitud: ${_location!.longitude.toStringAsFixed(5)}',
+                                style: const TextStyle(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                              const SizedBox(height: 2),
+                              Text(
+                                'Precisión: ${_location!.accuracyMeters.toStringAsFixed(1)} m',
+                                style: const TextStyle(fontSize: 12),
+                              ),
+                              if (_location!.accuracyMeters > 100)
+                                const Padding(
+                                  padding: EdgeInsets.only(top: 4),
+                                  child: Text(
+                                    'Precisión baja, intente al aire libre',
+                                    style: TextStyle(
+                                      color: Colors.deepOrange,
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+                                ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
                 ] else if (_captureStatus == _CaptureStatus.error &&
                     _locationMessage != null) ...[
-                  const SizedBox(height: 8),
-                  Text(
-                    _locationMessage!,
-                    style: TextStyle(
-                      color: Theme.of(context).colorScheme.error,
+                  const SizedBox(height: 10),
+                  Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFFEF2F2),
+                      borderRadius: BorderRadius.circular(10),
+                      border: Border.all(color: const Color(0xFFFECACA)),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          _locationMessage!,
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: Theme.of(context).colorScheme.error,
+                          ),
+                        ),
+                        if (_locationFailure ==
+                                LocationCaptureFailure.permissionDeniedForever ||
+                            _locationFailure ==
+                                LocationCaptureFailure.serviceDisabled)
+                          TextButton(
+                            onPressed: _openSettings,
+                            child: Text(
+                              _locationFailure ==
+                                      LocationCaptureFailure.permissionDeniedForever
+                                  ? 'Abrir ajustes de la aplicación'
+                                  : 'Abrir ajustes de ubicación',
+                            ),
+                          ),
+                      ],
                     ),
                   ),
-                  if (_locationFailure ==
-                          LocationCaptureFailure.permissionDeniedForever ||
-                      _locationFailure ==
-                          LocationCaptureFailure.serviceDisabled)
-                    TextButton(
-                      onPressed: _openSettings,
-                      child: Text(
-                        _locationFailure ==
-                                LocationCaptureFailure.permissionDeniedForever
-                            ? 'Abrir ajustes de la aplicación'
-                            : 'Abrir ajustes de ubicación',
-                      ),
-                    ),
                 ] else if (!_consent) ...[
+                  const SizedBox(height: 8),
                   Text(
                     'Opcional: puede guardar la evaluación sin ubicación.',
-                    style: TextStyle(color: disabledColor),
+                    style: TextStyle(color: disabledColor, fontSize: 12),
                   ),
                 ],
               ],

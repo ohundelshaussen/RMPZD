@@ -18,6 +18,7 @@ class AssessmentModel {
   Map<String, dynamic> toMap() {
     final patient = record.patient;
     final result = record.result;
+    final hasConsent = patient.consentimientoDatos;
 
     return {
       'id': record.idLocal,
@@ -42,6 +43,8 @@ class AssessmentModel {
       'fecha_evaluacion': record.fechaGuardado.toIso8601String(),
       'nivel_riesgo_predicho': result.riskLabel,
       'probabilidad_riesgo_alto': result.probAlto,
+      'probabilidad_riesgo_medio': result.probMedio,
+      'probabilidad_riesgo_bajo': result.probBajo,
       'alerta_clinica_inmediata': result.hasImmediateEmergency ? 1 : 0,
       'descripcion_alerta': result.clinicalAlerts.isNotEmpty
           ? result.clinicalAlerts.map((alert) => alert.title).join(' | ')
@@ -57,16 +60,18 @@ class AssessmentModel {
           .toUtc()
           .toIso8601String(),
       'codigo_consulta': record.consultationCode?.replaceAll('-', ''),
-      'nombre_paciente': patient.nombrePaciente,
-      'direccion_paciente': patient.direccionPaciente,
-      'latitud': patient.latitud,
-      'longitud': patient.longitud,
-      'precision_gps_m': patient.precisionGpsM,
-      'ubicacion_capturada_at': patient.ubicacionCapturadaAt
-          ?.toUtc()
-          .toIso8601String(),
-      'consentimiento_datos': patient.consentimientoDatos ? 1 : 0,
-      'consentimiento_at': record.consentimientoAt?.toUtc().toIso8601String(),
+      'nombre_paciente': hasConsent ? patient.nombrePaciente : null,
+      'direccion_paciente': hasConsent ? patient.direccionPaciente : null,
+      'latitud': hasConsent ? patient.latitud : null,
+      'longitud': hasConsent ? patient.longitud : null,
+      'precision_gps_m': hasConsent ? patient.precisionGpsM : null,
+      'ubicacion_capturada_at': hasConsent
+          ? patient.ubicacionCapturadaAt?.toUtc().toIso8601String()
+          : null,
+      'consentimiento_datos': hasConsent ? 1 : 0,
+      'consentimiento_at': hasConsent
+          ? record.consentimientoAt?.toUtc().toIso8601String()
+          : null,
     };
   }
 
@@ -175,8 +180,8 @@ class AssessmentModel {
     final result = TriageResult(
       riskLevel: _riskLevelFromLabel(map['nivel_riesgo_predicho'] as String),
       probAlto: (map['probabilidad_riesgo_alto'] as num).toDouble(),
-      probMedio: 0,
-      probBajo: 0,
+      probMedio: (map['probabilidad_riesgo_medio'] as num?)?.toDouble() ?? 0.0,
+      probBajo: (map['probabilidad_riesgo_bajo'] as num?)?.toDouble() ?? 0.0,
       riesgoDesenlaceAdverso:
           probabilityAdverseOutcome >=
           ClinicalThresholds.aiAdverseOutcomeThreshold,

@@ -92,6 +92,8 @@ void main() {
           'fecha_evaluacion',
           'nivel_riesgo_predicho',
           'probabilidad_riesgo_alto',
+          'probabilidad_riesgo_medio',
+          'probabilidad_riesgo_bajo',
           'alerta_clinica_inmediata',
           'descripcion_alerta',
           'probabilidad_desenlace_adverso',
@@ -113,7 +115,7 @@ void main() {
           'consentimiento_at',
         ]),
       );
-      expect(row, hasLength(41));
+      expect(row, hasLength(43));
       expect(row['codigo_consulta'], 'ABCD2345');
       expect(model.toJson(), row);
       expect(restored.idLocal, 42);
@@ -126,6 +128,8 @@ void main() {
       expect(restored.isSynced, isTrue);
       expect(restored.result.riskLevel, RiskLevel.alto);
       expect(restored.result.probAlto, 0.6);
+      expect(restored.result.probMedio, 0.3);
+      expect(restored.result.probBajo, 0.1);
       expect(restored.result.riesgoDesenlaceAdverso, isTrue);
       expect(restored.result.hasImmediateEmergency, isTrue);
       expect(restored.result.clinicalAlerts.map((alert) => alert.title), [
@@ -279,6 +283,67 @@ void main() {
       expect(restored.patient.nombrePaciente, 'Paciente de prueba');
       expect(restored.patient.latitud, 10.4631);
       expect(restored.consentimientoAt, DateTime.utc(2026, 11, 11, 20, 12));
+    },
+  );
+
+  test(
+    'redacts identity and GPS fields in local map when consent is false',
+    () {
+      final date = DateTime.parse('2026-11-11T15:00:00-05:00');
+      final record = AssessmentRecord(
+        patient: PatientAssessment(
+          patientId: 'MP-NOCONSENT',
+          municipio: 'Valledupar',
+          departamento: 'Cesar',
+          etnia: 'No Indígena',
+          zona: 'Urbana',
+          edadMaterna: 24,
+          semanasGestacion: 28,
+          numeroControles: 3,
+          distanciaKm: 18.5,
+          tiempoTrasladoHoras: 1.8,
+          hemoglobina: 11.2,
+          presionSistolica: 120,
+          presionDiastolica: 75,
+          imc: 25.4,
+          antecedentePreeclampsia: false,
+          antecedenteDiabetes: false,
+          partoInstitucionalPrevio: true,
+          afiliacionSgsss: 'Subsidiado',
+          fechaEvaluacion: date,
+          nombrePaciente: 'Debe ocultarse',
+          direccionPaciente: 'Calle falsa',
+          latitud: 10.4631,
+          longitud: -73.2532,
+          precisionGpsM: 8.4,
+          ubicacionCapturadaAt: date,
+          consentimientoDatos: false,
+        ),
+        result: const TriageResult(
+          riskLevel: RiskLevel.bajo,
+          probAlto: 0.1,
+          probMedio: 0.2,
+          probBajo: 0.7,
+          riesgoDesenlaceAdverso: false,
+          probDesenlaceAdverso: 0.1,
+          clinicalAlerts: [],
+          hasImmediateEmergency: false,
+        ),
+        uuid: '97c76ec7-9228-4de0-88c3-f2efee432939',
+        ownerId: 'doctor-1',
+        consentimientoAt: date,
+        fechaGuardado: date,
+      );
+
+      final local = AssessmentModel(record: record).toMap();
+      expect(local['consentimiento_datos'], 0);
+      expect(local['nombre_paciente'], isNull);
+      expect(local['direccion_paciente'], isNull);
+      expect(local['latitud'], isNull);
+      expect(local['longitud'], isNull);
+      expect(local['precision_gps_m'], isNull);
+      expect(local['ubicacion_capturada_at'], isNull);
+      expect(local['consentimiento_at'], isNull);
     },
   );
 }

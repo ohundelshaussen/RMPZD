@@ -23,16 +23,13 @@ class RiskFacilitiesRecommendations extends StatelessWidget {
   Widget build(BuildContext context) {
     if (riskLevel == RiskLevel.bajo) return const SizedBox.shrink();
     final isHighRisk = riskLevel == RiskLevel.alto;
-    return Padding(
-      padding: const EdgeInsets.only(top: 16),
-      child: NearestFacilitiesSection(
-        latitude: latitude,
-        longitude: longitude,
-        department: department,
-        municipality: municipality,
-        highRisk: isHighRisk,
-        initiallyExpanded: isHighRisk,
-      ),
+    return NearestFacilitiesSection(
+      latitude: latitude,
+      longitude: longitude,
+      department: department,
+      municipality: municipality,
+      highRisk: isHighRisk,
+      initiallyExpanded: isHighRisk,
     );
   }
 }

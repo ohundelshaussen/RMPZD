@@ -8,6 +8,12 @@ abstract class AssessmentRepository {
     TriageResult result, {
     required String ownerId,
   });
+  Future<AssessmentRecord> updateAssessment(
+    AssessmentRecord existingRecord,
+    PatientAssessment updatedPatient,
+    TriageResult updatedResult,
+  );
+  Future<void> deleteAssessment({required String uuid});
   Future<List<AssessmentRecord>> getHistory({required String ownerId});
   Future<int> getUnsyncedCount({required String ownerId});
 }

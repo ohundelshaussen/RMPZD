@@ -215,8 +215,8 @@ Future<_Fixture> _createFixture() async {
   final database = await databaseFactoryFfi.openDatabase(
     inMemoryDatabasePath,
     options: OpenDatabaseOptions(
-      version: 5,
-      onCreate: (db, version) => DatabaseHelper.createV5Schema(db),
+      version: 6,
+      onCreate: (db, version) => DatabaseHelper.createV6Schema(db),
     ),
   );
   final local = AssessmentLocalDataSource(
@@ -312,6 +312,15 @@ class _FailingFacilityRepository implements FacilityRepository {
 class _AcceptingRemoteDataSource implements AssessmentRemoteDataSource {
   @override
   Future<void> upsertBatch(List<Map<String, dynamic>> payload) async {}
+
+  @override
+  Future<bool> updateAssessment(
+    String uuid,
+    Map<String, dynamic> payload,
+  ) async => true;
+
+  @override
+  Future<bool> deleteAssessment(String uuid) async => true;
 
   @override
   bool isClientFailure(Object error) => false;

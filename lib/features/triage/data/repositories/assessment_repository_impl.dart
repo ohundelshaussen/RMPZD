@@ -39,6 +39,66 @@ class AssessmentRepositoryImpl implements AssessmentRepository {
   }
 
   @override
+  Future<AssessmentRecord> updateAssessment(
+    AssessmentRecord existingRecord,
+    PatientAssessment updatedPatient,
+    TriageResult updatedResult,
+  ) async {
+    final consentAt = updatedPatient.consentimientoDatos
+        ? (existingRecord.consentimientoAt ?? DateTime.now().toUtc())
+        : null;
+    final sanitizedPatient = updatedPatient.consentimientoDatos
+        ? updatedPatient
+        : PatientAssessment(
+            patientId: updatedPatient.patientId,
+            municipio: updatedPatient.municipio,
+            departamento: updatedPatient.departamento,
+            etnia: updatedPatient.etnia,
+            zona: updatedPatient.zona,
+            edadMaterna: updatedPatient.edadMaterna,
+            semanasGestacion: updatedPatient.semanasGestacion,
+            numeroControles: updatedPatient.numeroControles,
+            distanciaKm: updatedPatient.distanciaKm,
+            tiempoTrasladoHoras: updatedPatient.tiempoTrasladoHoras,
+            hemoglobina: updatedPatient.hemoglobina,
+            presionSistolica: updatedPatient.presionSistolica,
+            presionDiastolica: updatedPatient.presionDiastolica,
+            imc: updatedPatient.imc,
+            antecedentePreeclampsia: updatedPatient.antecedentePreeclampsia,
+            antecedenteDiabetes: updatedPatient.antecedenteDiabetes,
+            partoInstitucionalPrevio: updatedPatient.partoInstitucionalPrevio,
+            afiliacionSgsss: updatedPatient.afiliacionSgsss,
+            fechaEvaluacion: updatedPatient.fechaEvaluacion,
+          );
+    final updatedRecord = AssessmentRecord(
+      patient: sanitizedPatient,
+      result: updatedResult,
+      idLocal: existingRecord.idLocal,
+      uuid: existingRecord.uuid,
+      ownerId: existingRecord.ownerId,
+      syncStatus: existingRecord.isSynced
+          ? SyncStatus.synced
+          : SyncStatus.pending,
+      lastSyncError: null,
+      consultationCode: existingRecord.consultationCode,
+      consentimientoAt: consentAt,
+      fechaGuardado: existingRecord.fechaGuardado,
+    );
+    final saved = await localDataSource.updateAssessment(
+      AssessmentModel(
+        record: updatedRecord,
+        updatedAt: DateTime.now().toUtc(),
+      ),
+    );
+    return saved.record;
+  }
+
+  @override
+  Future<void> deleteAssessment({required String uuid}) async {
+    await localDataSource.deleteAssessment(uuid);
+  }
+
+  @override
   Future<List<AssessmentRecord>> getHistory({required String ownerId}) async {
     final assessments = await localDataSource.getAssessments(ownerId);
     return assessments.map((assessment) => assessment.record).toList();

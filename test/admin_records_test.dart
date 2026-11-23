@@ -1,18 +1,23 @@
 import 'dart:io';
 
 import 'package:connectivity_plus/connectivity_plus.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:provider/provider.dart';
 import 'package:rmpzd/core/network/connectivity_service.dart';
 import 'package:rmpzd/features/admin_records/data/datasources/admin_records_remote_datasource.dart';
 import 'package:rmpzd/features/admin_records/data/repositories/admin_records_repository_impl.dart';
 import 'package:rmpzd/features/admin_records/domain/entities/remote_assessment.dart';
 import 'package:rmpzd/features/admin_records/domain/repositories/admin_records_repository.dart';
+import 'package:rmpzd/features/admin_records/domain/usecases/delete_admin_assessment_usecase.dart';
 import 'package:rmpzd/features/admin_records/domain/usecases/get_admin_assessments_usecase.dart';
+import 'package:rmpzd/features/admin_records/domain/usecases/update_admin_assessment_usecase.dart';
+import 'package:rmpzd/features/admin_records/presentation/pages/admin_records_page.dart';
 import 'package:rmpzd/features/admin_records/presentation/providers/admin_records_provider.dart';
 
 void main() {
   group('AdminRecordsProvider', () {
-    test('paginates by 30 and sends all selected filters', () async {
+    test('paginates by 30 and sends all selected filters including search', () async {
       final source = _FakeDataSource(
         onFetch: (offset, limit, filters) => List.generate(
           offset == 0 ? limit : 1,
@@ -26,6 +31,7 @@ void main() {
         department: 'Cesar',
         fromDate: DateTime(2026, 1, 2),
         toDate: DateTime(2026, 1, 8),
+        searchQuery: 'PAC-12',
       );
 
       await provider.setFilters(selected);
@@ -38,6 +44,7 @@ void main() {
       expect(source.calls.single.filters.department, 'Cesar');
       expect(source.calls.single.filters.fromDate, DateTime(2026, 1, 2));
       expect(source.calls.single.filters.toDate, DateTime(2026, 1, 8));
+      expect(source.calls.single.filters.searchQuery, 'PAC-12');
 
       await provider.loadMore();
       expect(provider.records, hasLength(31));
@@ -79,6 +86,46 @@ void main() {
 
       expect(assessment.doctorName, 'medico@example.org');
       expect(assessment.doctorEmail, 'medico@example.org');
+    });
+
+    test('builds search filter including consultation code without hyphens and handles hash flags', () {
+      expect(
+        SupabaseAdminRecordsRemoteDataSource.buildSearchOrFilter('PAC-10'),
+        'patient_id.ilike.%PAC-10%,nombre_paciente.ilike.%PAC-10%,codigo_consulta.ilike.%PAC10%',
+      );
+      expect(
+        SupabaseAdminRecordsRemoteDataSource.buildSearchOrFilter('ABCD-2345'),
+        contains('codigo_consulta.ilike.%ABCD2345%'),
+      );
+      expect(
+        SupabaseAdminRecordsRemoteDataSource.buildSearchOrFilter('---'),
+        isNot(contains('codigo_consulta.ilike')),
+      );
+      expect(
+        SupabaseAdminRecordsRemoteDataSource.buildSearchOrFilter(
+          '550e8400-e29b-41d4-a716-446655440000',
+        ),
+        contains('created_by.eq.550e8400-e29b-41d4-a716-446655440000'),
+      );
+      expect(
+        SupabaseAdminRecordsRemoteDataSource.buildSearchOrFilter('   '),
+        isNull,
+      );
+
+      final withCode = RemoteAssessment.fromJson({
+        ..._assessment(1),
+        'codigo_consulta': 'ABCD2345',
+      });
+      expect(withCode.formattedConsultationCode, 'ABCD-2345');
+      expect(withCode.hasConsultationCodeHash, isFalse);
+
+      final withHashOnly = RemoteAssessment.fromJson({
+        ..._assessment(2),
+        'codigo_consulta': null,
+        'codigo_consulta_hash': 'sha256_abc',
+      });
+      expect(withHashOnly.formattedConsultationCode, isNull);
+      expect(withHashOnly.hasConsultationCodeHash, isTrue);
     });
 
     test(
@@ -127,6 +174,112 @@ void main() {
         );
       },
     );
+
+    test('edits and deletes remote assessments and reports RLS rejections', () async {
+      final source = _FakeDataSource(
+        onFetch: (offset, limit, filters) => [_assessment(1)],
+      );
+      final provider = _provider(source);
+      await provider.loadInitial();
+
+      final editOk = await provider.editAssessment('1', {'municipio': 'Maicao'});
+      expect(editOk.success, isTrue);
+      expect(provider.records.single.municipality, 'Maicao');
+
+      source.permissionDenied = true;
+      final editDenied = await provider.editAssessment('1', {'municipio': 'Uribia'});
+      expect(editDenied.success, isFalse);
+      expect(editDenied.message, contains('RLS'));
+
+      final deleteDenied = await provider.removeAssessment('1');
+      expect(deleteDenied.success, isFalse);
+      expect(provider.records, hasLength(1));
+
+      source.permissionDenied = false;
+      final deleteOk = await provider.removeAssessment('1');
+      expect(deleteOk.success, isTrue);
+      expect(provider.records, isEmpty);
+    });
+
+    testWidgets(
+      'AdminRecordsPage renders search bar, filter pills and omits non-alert noise',
+      (tester) async {
+        final source = _FakeDataSource(
+          onFetch: (offset, limit, filters) => [
+            {
+              ..._assessment(10),
+              'nombre_paciente': 'María Pérez',
+              'alerta_clinica_inmediata': false,
+            },
+          ],
+        );
+        final provider = _provider(source);
+
+        await tester.pumpWidget(
+          ChangeNotifierProvider<AdminRecordsProvider>.value(
+            value: provider,
+            child: const MaterialApp(home: AdminRecordsPage()),
+          ),
+        );
+        await tester.pumpAndSettle();
+
+        expect(
+          find.byType(TextField),
+          findsOneWidget,
+        );
+        expect(find.text('María Pérez'), findsOneWidget);
+        expect(find.text('ID: PAC-10'), findsOneWidget);
+        expect(find.text('Sin alerta clínica inmediata'), findsNothing);
+
+        await tester.enterText(find.byType(TextField), 'PAC-10');
+        await tester.testTextInput.receiveAction(TextInputAction.search);
+        await tester.pumpAndSettle();
+
+        expect(source.calls.last.filters.searchQuery, 'PAC-10');
+      },
+    );
+
+    testWidgets(
+      'AdminRecordsPage displays formatted consultation code on cards and hash notice in detail sheet',
+      (tester) async {
+        final source = _FakeDataSource(
+          onFetch: (offset, limit, filters) => [
+            {
+              ..._assessment(10),
+              'nombre_paciente': 'María Pérez',
+              'codigo_consulta': 'ABCD2345',
+            },
+            {
+              ..._assessment(11),
+              'nombre_paciente': 'Elena Ruiz',
+              'codigo_consulta': null,
+              'codigo_consulta_hash': 'hash-xyz',
+            },
+          ],
+        );
+        final provider = _provider(source);
+
+        await tester.pumpWidget(
+          ChangeNotifierProvider<AdminRecordsProvider>.value(
+            value: provider,
+            child: const MaterialApp(home: AdminRecordsPage()),
+          ),
+        );
+        await tester.pumpAndSettle();
+
+        expect(find.text('Cód. ABCD-2345'), findsOneWidget);
+
+        await tester.tap(find.text('Elena Ruiz'));
+        await tester.pumpAndSettle();
+
+        await tester.scrollUntilVisible(
+          find.text('Protegido en servidor (solo hash)'),
+          200,
+          scrollable: find.byType(Scrollable).last,
+        );
+        expect(find.text('Protegido en servidor (solo hash)'), findsOneWidget);
+      },
+    );
   });
 }
 
@@ -134,10 +287,11 @@ AdminRecordsProvider _provider(
   _FakeDataSource source, {
   _FakeConnectivity? connectivity,
 }) {
+  final repository = AdminRecordsRepositoryImpl(source);
   return AdminRecordsProvider(
-    getAssessments: GetAdminAssessmentsUseCase(
-      AdminRecordsRepositoryImpl(source),
-    ),
+    getAssessments: GetAdminAssessmentsUseCase(repository),
+    updateAssessment: UpdateAdminAssessmentUseCase(repository),
+    deleteAssessment: DeleteAdminAssessmentUseCase(repository),
     connectivityService: connectivity ?? _FakeConnectivity(true),
   );
 }
@@ -165,6 +319,7 @@ class _FakeDataSource implements AdminRecordsRemoteDataSource {
   )?
   onFetch;
   final Object? error;
+  bool permissionDenied = false;
 
   _FakeDataSource({this.onFetch, this.error});
 
@@ -177,6 +332,24 @@ class _FakeDataSource implements AdminRecordsRemoteDataSource {
     calls.add(_FetchCall(offset, limit, filters));
     if (error != null) throw error!;
     return onFetch?.call(offset, limit, filters) ?? [_assessment(1)];
+  }
+
+  @override
+  Future<Map<String, dynamic>> updateAssessment({
+    required String id,
+    required Map<String, dynamic> updates,
+  }) async {
+    if (permissionDenied) {
+      throw const AdminPermissionException('Bloqueado por RLS.');
+    }
+    return {..._assessment(int.tryParse(id) ?? 1), ...updates};
+  }
+
+  @override
+  Future<void> deleteAssessment({required String id}) async {
+    if (permissionDenied) {
+      throw const AdminPermissionException('Bloqueado por RLS.');
+    }
   }
 }
 
