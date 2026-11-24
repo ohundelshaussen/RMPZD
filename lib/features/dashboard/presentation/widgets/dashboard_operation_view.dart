@@ -63,7 +63,7 @@ class _DashboardOperationViewState extends State<DashboardOperationView> {
   Widget _filters(DashboardProvider provider) {
     return Card(
       child: Padding(
-        padding: const EdgeInsets.all(12),
+        padding: const EdgeInsets.all(14),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -73,12 +73,13 @@ class _DashboardOperationViewState extends State<DashboardOperationView> {
                 fontSize: 12,
                 fontWeight: FontWeight.w700,
                 color: AppColors.textSecondary,
+                letterSpacing: 0.1,
               ),
             ),
-            const SizedBox(height: 8),
+            const SizedBox(height: 10),
             Wrap(
               spacing: 6,
-              runSpacing: 4,
+              runSpacing: 6,
               children: [
                 for (final period in DashboardPeriod.values)
                   ChoiceChip(
@@ -88,7 +89,7 @@ class _DashboardOperationViewState extends State<DashboardOperationView> {
                   ),
               ],
             ),
-            const SizedBox(height: 10),
+            const SizedBox(height: 12),
             DropdownButtonFormField<String?>(
               key: ValueKey(provider.filter.department),
               initialValue: provider.filter.department,
@@ -123,17 +124,31 @@ class _DashboardOperationViewState extends State<DashboardOperationView> {
       key: const ValueKey('dashboard-cache-banner'),
       width: double.infinity,
       margin: const EdgeInsets.only(bottom: 12),
-      padding: const EdgeInsets.all(12),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
       decoration: BoxDecoration(
         color: AppColors.surfaceVariant,
         borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: AppColors.border),
       ),
-      child: Text(
-        'Sin conexión · datos del $formatted',
-        style: const TextStyle(
-          color: AppColors.textSecondary,
-          fontWeight: FontWeight.w600,
-        ),
+      child: Row(
+        children: [
+          const Icon(
+            Icons.cloud_off_outlined,
+            size: 16,
+            color: AppColors.textSecondary,
+          ),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              'Sin conexión · datos del $formatted',
+              style: const TextStyle(
+                fontSize: 12,
+                color: AppColors.textSecondary,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -232,12 +247,14 @@ class _DashboardOperationViewState extends State<DashboardOperationView> {
         '${summary.highRisk}',
         Icons.trending_up_rounded,
         subtitle: '${_percent(summary.highRisk, total)} del total',
+        semanticDot: summary.highRisk > 0 ? AppColors.riskHigh : null,
       ),
       _Kpi(
         'Emergencias',
         '${summary.emergencies}',
         Icons.warning_amber_rounded,
         subtitle: '${_percent(summary.emergencies, total)} del total',
+        semanticDot: summary.emergencies > 0 ? AppColors.emergencyRed : null,
       ),
       _Kpi(
         'Prob. media riesgo alto',
@@ -263,28 +280,44 @@ class _DashboardOperationViewState extends State<DashboardOperationView> {
       itemCount: kpis.length,
       gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
         crossAxisCount: 2,
-        crossAxisSpacing: 8,
-        mainAxisSpacing: 8,
-        mainAxisExtent: 124 * textScale,
+        crossAxisSpacing: 10,
+        mainAxisSpacing: 10,
+        mainAxisExtent: 122 * textScale,
       ),
       itemBuilder: (context, index) {
         final item = kpis[index];
         return Card(
           child: Padding(
-            padding: const EdgeInsets.all(12),
+            padding: const EdgeInsets.all(13),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Icon(item.icon, size: 19, color: AppColors.primary),
+                Row(
+                  children: [
+                    Icon(item.icon, size: 17, color: AppColors.textMuted),
+                    const Spacer(),
+                    if (item.semanticDot case final dotColor?)
+                      Container(
+                        width: 7,
+                        height: 7,
+                        decoration: BoxDecoration(
+                          color: dotColor,
+                          shape: BoxShape.circle,
+                        ),
+                      ),
+                  ],
+                ),
                 Text(
                   item.value,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: const TextStyle(
-                    fontSize: 20,
+                    fontSize: 23,
                     fontWeight: FontWeight.w800,
+                    letterSpacing: -0.5,
                     color: AppColors.textPrimary,
+                    fontFeatures: [FontFeature.tabularFigures()],
                   ),
                 ),
                 Flexible(
@@ -293,8 +326,10 @@ class _DashboardOperationViewState extends State<DashboardOperationView> {
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
                     style: const TextStyle(
-                      fontSize: 11,
+                      fontSize: 11.5,
+                      fontWeight: FontWeight.w600,
                       color: AppColors.textSecondary,
+                      height: 1.2,
                     ),
                   ),
                 ),
@@ -304,8 +339,9 @@ class _DashboardOperationViewState extends State<DashboardOperationView> {
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: const TextStyle(
-                      fontSize: 10,
+                      fontSize: 10.5,
                       color: AppColors.textMuted,
+                      fontFeatures: [FontFeature.tabularFigures()],
                     ),
                   ),
               ],
@@ -330,51 +366,70 @@ class _DashboardOperationViewState extends State<DashboardOperationView> {
           : Column(
               children: [
                 SizedBox(
-                  height: 190,
+                  height: 176,
                   child: PieChart(
                     PieChartData(
-                      centerSpaceRadius: 42,
-                      sectionsSpace: 3,
+                      centerSpaceRadius: 44,
+                      sectionsSpace: 2,
                       sections: [
                         for (final item in slices)
                           PieChartSectionData(
                             value: item.total.toDouble(),
                             color: colors[item.level] ?? AppColors.primaryLight,
                             title: '${item.total}',
-                            radius: 48,
+                            radius: 38,
                             titleStyle: const TextStyle(
                               color: Colors.white,
                               fontSize: 12,
-                              fontWeight: FontWeight.bold,
+                              fontWeight: FontWeight.w700,
                             ),
                           ),
                       ],
                     ),
                   ),
                 ),
-                const SizedBox(height: 8),
-                for (final item in values)
+                const SizedBox(height: 12),
+                for (var index = 0; index < values.length; index++) ...[
+                  if (index > 0)
+                    const Divider(height: 12, color: AppColors.border),
                   Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 3),
+                    padding: const EdgeInsets.symmetric(vertical: 2),
                     child: Row(
                       children: [
                         Container(
-                          width: 10,
-                          height: 10,
+                          width: 9,
+                          height: 9,
                           decoration: BoxDecoration(
                             shape: BoxShape.circle,
-                            color: colors[item.level] ?? AppColors.primaryLight,
+                            color:
+                                colors[values[index].level] ??
+                                AppColors.primaryLight,
                           ),
                         ),
-                        const SizedBox(width: 8),
-                        Expanded(child: Text(item.level)),
+                        const SizedBox(width: 9),
+                        Expanded(
+                          child: Text(
+                            values[index].level,
+                            style: const TextStyle(
+                              fontSize: 13,
+                              color: AppColors.textPrimary,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        ),
                         Text(
-                          '${item.total}',
-                          style: const TextStyle(fontWeight: FontWeight.w700),
+                          '${values[index].total}',
+                          style: const TextStyle(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w700,
+                            color: AppColors.textPrimary,
+                            fontFeatures: [FontFeature.tabularFigures()],
+                          ),
                         ),
                       ],
                     ),
                   ),
+                ],
               ],
             ),
     );
@@ -400,7 +455,7 @@ class _DashboardOperationViewState extends State<DashboardOperationView> {
                 return Column(
                   children: [
                     SizedBox(
-                      height: 235,
+                      height: 225,
                       child: SingleChildScrollView(
                         scrollDirection: Axis.horizontal,
                         child: SizedBox(
@@ -408,14 +463,32 @@ class _DashboardOperationViewState extends State<DashboardOperationView> {
                           child: BarChart(
                             BarChartData(
                               maxY: maxValue == 0 ? 1 : maxValue * 1.15,
-                              gridData: const FlGridData(show: true),
+                              gridData: FlGridData(
+                                show: true,
+                                drawVerticalLine: false,
+                                getDrawingHorizontalLine: (_) => const FlLine(
+                                  color: AppColors.border,
+                                  strokeWidth: 1,
+                                ),
+                              ),
                               borderData: FlBorderData(show: false),
                               barTouchData: BarTouchData(enabled: false),
                               titlesData: FlTitlesData(
-                                leftTitles: const AxisTitles(
+                                leftTitles: AxisTitles(
                                   sideTitles: SideTitles(
                                     showTitles: true,
                                     reservedSize: 30,
+                                    getTitlesWidget: (value, meta) =>
+                                        SideTitleWidget(
+                                          meta: meta,
+                                          child: Text(
+                                            value.toInt().toString(),
+                                            style: const TextStyle(
+                                              fontSize: 10,
+                                              color: AppColors.textMuted,
+                                            ),
+                                          ),
+                                        ),
                                   ),
                                 ),
                                 rightTitles: const AxisTitles(
@@ -427,7 +500,7 @@ class _DashboardOperationViewState extends State<DashboardOperationView> {
                                 bottomTitles: AxisTitles(
                                   sideTitles: SideTitles(
                                     showTitles: true,
-                                    reservedSize: 32,
+                                    reservedSize: 30,
                                     getTitlesWidget: (value, meta) {
                                       final index = value.toInt();
                                       if (index < 0 ||
@@ -441,7 +514,10 @@ class _DashboardOperationViewState extends State<DashboardOperationView> {
                                           DateFormat(
                                             weekly ? 'dd/MM' : 'dd',
                                           ).format(values[index].day),
-                                          style: const TextStyle(fontSize: 9),
+                                          style: const TextStyle(
+                                            fontSize: 10,
+                                            color: AppColors.textMuted,
+                                          ),
                                         ),
                                       );
                                     },
@@ -460,15 +536,23 @@ class _DashboardOperationViewState extends State<DashboardOperationView> {
                                     barRods: [
                                       BarChartRodData(
                                         toY: values[index].total.toDouble(),
-                                        color: AppColors.primary,
+                                        color: AppColors.primary.withValues(
+                                          alpha: 0.78,
+                                        ),
                                         width: 8,
-                                        borderRadius: BorderRadius.circular(2),
+                                        borderRadius:
+                                            const BorderRadius.vertical(
+                                              top: Radius.circular(3),
+                                            ),
                                       ),
                                       BarChartRodData(
                                         toY: values[index].highRisk.toDouble(),
                                         color: AppColors.riskHigh,
                                         width: 8,
-                                        borderRadius: BorderRadius.circular(2),
+                                        borderRadius:
+                                            const BorderRadius.vertical(
+                                              top: Radius.circular(3),
+                                            ),
                                       ),
                                     ],
                                   ),
@@ -478,11 +562,15 @@ class _DashboardOperationViewState extends State<DashboardOperationView> {
                         ),
                       ),
                     ),
-                    const Wrap(
+                    const SizedBox(height: 6),
+                    Wrap(
                       spacing: 16,
                       children: [
-                        _LegendItem(color: AppColors.primary, label: 'Total'),
                         _LegendItem(
+                          color: AppColors.primary.withValues(alpha: 0.78),
+                          label: 'Total',
+                        ),
+                        const _LegendItem(
                           color: AppColors.riskHigh,
                           label: 'Alto riesgo',
                         ),
@@ -527,7 +615,9 @@ class _DashboardOperationViewState extends State<DashboardOperationView> {
                                     maxLines: 1,
                                     overflow: TextOverflow.ellipsis,
                                     style: const TextStyle(
+                                      fontSize: 13,
                                       fontWeight: FontWeight.w600,
+                                      color: AppColors.textPrimary,
                                     ),
                                   ),
                                   if (showDepartment && item.department != null)
@@ -541,33 +631,55 @@ class _DashboardOperationViewState extends State<DashboardOperationView> {
                                 ],
                               ),
                             ),
+                            const SizedBox(width: 8),
                             Text(
                               'Total ${item.total} · Altos ${item.highRisk}',
-                              style: const TextStyle(fontSize: 11),
+                              style: const TextStyle(
+                                fontSize: 11.5,
+                                color: AppColors.textSecondary,
+                                fontWeight: FontWeight.w500,
+                                fontFeatures: [FontFeature.tabularFigures()],
+                              ),
                             ),
                           ],
                         ),
-                        const SizedBox(height: 4),
+                        const SizedBox(height: 6),
                         ClipRRect(
                           borderRadius: BorderRadius.circular(4),
-                          child: LinearProgressIndicator(
-                            value: maxTotal == 0 ? 0 : item.total / maxTotal,
-                            minHeight: 6,
-                            backgroundColor: AppColors.surfaceVariant,
-                            valueColor: const AlwaysStoppedAnimation(
-                              AppColors.primaryLight,
-                            ),
-                          ),
-                        ),
-                        const SizedBox(height: 3),
-                        ClipRRect(
-                          borderRadius: BorderRadius.circular(4),
-                          child: LinearProgressIndicator(
-                            value: maxTotal == 0 ? 0 : item.highRisk / maxTotal,
-                            minHeight: 4,
-                            backgroundColor: AppColors.surfaceVariant,
-                            valueColor: const AlwaysStoppedAnimation(
-                              AppColors.riskHigh,
+                          child: SizedBox(
+                            height: 7,
+                            width: double.infinity,
+                            child: Stack(
+                              fit: StackFit.expand,
+                              children: [
+                                const ColoredBox(
+                                  color: AppColors.surfaceVariant,
+                                ),
+                                FractionallySizedBox(
+                                  alignment: Alignment.centerLeft,
+                                  widthFactor: maxTotal == 0
+                                      ? 0
+                                      : (item.total / maxTotal).clamp(0.0, 1.0),
+                                  child: ColoredBox(
+                                    color: AppColors.primary.withValues(
+                                      alpha: 0.28,
+                                    ),
+                                  ),
+                                ),
+                                if (item.highRisk > 0)
+                                  FractionallySizedBox(
+                                    alignment: Alignment.centerLeft,
+                                    widthFactor: maxTotal == 0
+                                        ? 0
+                                        : (item.highRisk / maxTotal).clamp(
+                                            0.0,
+                                            1.0,
+                                          ),
+                                    child: const ColoredBox(
+                                      color: AppColors.riskHigh,
+                                    ),
+                                  ),
+                              ],
                             ),
                           ),
                         ),
@@ -593,7 +705,8 @@ class _DashboardOperationViewState extends State<DashboardOperationView> {
                     padding: const EdgeInsets.all(12),
                     decoration: BoxDecoration(
                       color: AppColors.background,
-                      borderRadius: BorderRadius.circular(10),
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: AppColors.border),
                     ),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
@@ -604,16 +717,26 @@ class _DashboardOperationViewState extends State<DashboardOperationView> {
                               child: Text(
                                 item.ethnicity,
                                 style: const TextStyle(
+                                  fontSize: 13.5,
                                   fontWeight: FontWeight.w700,
+                                  color: AppColors.textPrimary,
                                 ),
                               ),
                             ),
-                            Text('n = ${item.total}'),
+                            Text(
+                              'n = ${item.total}',
+                              style: const TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.w600,
+                                color: AppColors.textSecondary,
+                                fontFeatures: [FontFeature.tabularFigures()],
+                              ),
+                            ),
                           ],
                         ),
                         const SizedBox(height: 8),
                         Wrap(
-                          spacing: 12,
+                          spacing: 14,
                           runSpacing: 6,
                           children: [
                             _CompactMetric(
@@ -655,33 +778,49 @@ class _DashboardOperationViewState extends State<DashboardOperationView> {
       values.isEmpty
           ? const _NoChartData()
           : Wrap(
-              spacing: 8,
-              runSpacing: 8,
+              spacing: 10,
+              runSpacing: 10,
               children: [
                 for (final item in values)
-                  SizedBox(
-                    width: 145,
-                    child: Card(
+                  Container(
+                    width: 150,
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
                       color: AppColors.background,
-                      child: Padding(
-                        padding: const EdgeInsets.all(12),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              item.name,
-                              style: const TextStyle(
-                                fontWeight: FontWeight.w700,
-                              ),
-                            ),
-                            Text('Evaluaciones: ${item.total}'),
-                            Text(
-                              'Alto riesgo: ${item.highRisk} '
-                              '(${_percent(item.highRisk, item.total)})',
-                            ),
-                          ],
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: AppColors.border),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          item.name,
+                          style: const TextStyle(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w700,
+                            color: AppColors.textPrimary,
+                          ),
                         ),
-                      ),
+                        const SizedBox(height: 6),
+                        Text(
+                          'Evaluaciones: ${item.total}',
+                          style: const TextStyle(
+                            fontSize: 12,
+                            color: AppColors.textSecondary,
+                            fontFeatures: [FontFeature.tabularFigures()],
+                          ),
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          'Alto riesgo: ${item.highRisk} '
+                          '(${_percent(item.highRisk, item.total)})',
+                          style: const TextStyle(
+                            fontSize: 12,
+                            color: AppColors.textSecondary,
+                            fontFeatures: [FontFeature.tabularFigures()],
+                          ),
+                        ),
+                      ],
                     ),
                   ),
               ],
@@ -696,15 +835,28 @@ class _DashboardOperationViewState extends State<DashboardOperationView> {
           ? const _NoChartData()
           : Column(
               children: [
-                for (var index = 0; index < values.length; index++)
+                for (var index = 0; index < values.length; index++) ...[
+                  if (index > 0)
+                    const Divider(height: 1, color: AppColors.border),
                   ListTile(
-                    contentPadding: EdgeInsets.zero,
-                    leading: CircleAvatar(
-                      radius: 16,
-                      backgroundColor: AppColors.primaryLight.withValues(
-                        alpha: 0.18,
+                    contentPadding: const EdgeInsets.symmetric(vertical: 2),
+                    dense: true,
+                    leading: Container(
+                      width: 28,
+                      height: 28,
+                      alignment: Alignment.center,
+                      decoration: const BoxDecoration(
+                        color: AppColors.surfaceVariant,
+                        shape: BoxShape.circle,
                       ),
-                      child: Text('${index + 1}'),
+                      child: Text(
+                        '${index + 1}',
+                        style: const TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w700,
+                          color: AppColors.textSecondary,
+                        ),
+                      ),
                     ),
                     title: Text(
                       values[index].name.isEmpty
@@ -712,10 +864,20 @@ class _DashboardOperationViewState extends State<DashboardOperationView> {
                           : values[index].name,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        fontSize: 13.5,
+                        fontWeight: FontWeight.w600,
+                        color: AppColors.textPrimary,
+                      ),
                     ),
                     subtitle: Text(
                       'Evaluaciones ${values[index].total} · '
                       'Altos ${values[index].highRisk}',
+                      style: const TextStyle(
+                        fontSize: 12,
+                        color: AppColors.textSecondary,
+                        fontFeatures: [FontFeature.tabularFigures()],
+                      ),
                     ),
                     trailing: values[index].lastEvaluation == null
                         ? null
@@ -723,9 +885,14 @@ class _DashboardOperationViewState extends State<DashboardOperationView> {
                             DateFormat(
                               'dd/MM/yy',
                             ).format(values[index].lastEvaluation!.toLocal()),
-                            style: const TextStyle(fontSize: 11),
+                            style: const TextStyle(
+                              fontSize: 11,
+                              color: AppColors.textMuted,
+                              fontFeatures: [FontFeature.tabularFigures()],
+                            ),
                           ),
                   ),
+                ],
               ],
             ),
     );
@@ -734,11 +901,18 @@ class _DashboardOperationViewState extends State<DashboardOperationView> {
   Widget _section(String title, Widget child) {
     return Card(
       child: Padding(
-        padding: const EdgeInsets.all(14),
+        padding: const EdgeInsets.all(16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(title, style: const TextStyle(fontWeight: FontWeight.w700)),
+            Text(
+              title,
+              style: const TextStyle(
+                fontSize: 14.5,
+                fontWeight: FontWeight.w700,
+                color: AppColors.textPrimary,
+              ),
+            ),
             const SizedBox(height: 12),
             child,
           ],
@@ -758,8 +932,15 @@ class _Kpi {
   final String value;
   final IconData icon;
   final String? subtitle;
+  final Color? semanticDot;
 
-  const _Kpi(this.title, this.value, this.icon, {this.subtitle});
+  const _Kpi(
+    this.title,
+    this.value,
+    this.icon, {
+    this.subtitle,
+    this.semanticDot,
+  });
 }
 
 class _NoChartData extends StatelessWidget {
@@ -787,9 +968,20 @@ class _LegendItem extends StatelessWidget {
   Widget build(BuildContext context) => Row(
     mainAxisSize: MainAxisSize.min,
     children: [
-      Container(width: 10, height: 10, color: color),
-      const SizedBox(width: 5),
-      Text(label, style: const TextStyle(fontSize: 11)),
+      Container(
+        width: 8,
+        height: 8,
+        decoration: BoxDecoration(color: color, shape: BoxShape.circle),
+      ),
+      const SizedBox(width: 6),
+      Text(
+        label,
+        style: const TextStyle(
+          fontSize: 11.5,
+          color: AppColors.textSecondary,
+          fontWeight: FontWeight.w500,
+        ),
+      ),
     ],
   );
 }
@@ -801,8 +993,27 @@ class _CompactMetric extends StatelessWidget {
   const _CompactMetric(this.label, this.value);
 
   @override
-  Widget build(BuildContext context) => Text(
-    '$label: $value',
-    style: const TextStyle(fontSize: 11, color: AppColors.textSecondary),
+  Widget build(BuildContext context) => Text.rich(
+    TextSpan(
+      children: [
+        TextSpan(
+          text: '$label: ',
+          style: const TextStyle(
+            fontSize: 11.5,
+            color: AppColors.textSecondary,
+            fontWeight: FontWeight.w500,
+          ),
+        ),
+        TextSpan(
+          text: value,
+          style: const TextStyle(
+            fontSize: 11.5,
+            color: AppColors.textPrimary,
+            fontWeight: FontWeight.w700,
+            fontFeatures: [FontFeature.tabularFigures()],
+          ),
+        ),
+      ],
+    ),
   );
 }

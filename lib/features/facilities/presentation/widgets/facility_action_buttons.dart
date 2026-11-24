@@ -6,10 +6,14 @@ import '../services/facility_link_launcher.dart';
 class FacilityActionButtons extends StatelessWidget {
   final HealthFacility facility;
   final FacilityLinkLauncher launcher;
+  final double? originLatitude;
+  final double? originLongitude;
 
   const FacilityActionButtons({
     required this.facility,
     required this.launcher,
+    this.originLatitude,
+    this.originLongitude,
     super.key,
   });
 
@@ -22,6 +26,17 @@ class FacilityActionButtons extends StatelessWidget {
   Uri get _openStreetMapUri {
     final latitude = facility.latitude!;
     final longitude = facility.longitude!;
+    final originLat = originLatitude;
+    final originLng = originLongitude;
+    if (originLat != null &&
+        originLng != null &&
+        originLat.isFinite &&
+        originLng.isFinite) {
+      return Uri.https('www.openstreetmap.org', '/directions', {
+        'engine': 'fossgis_osrm_car',
+        'route': '$originLat,$originLng;$latitude,$longitude',
+      }).replace(fragment: 'map=14/$latitude/$longitude');
+    }
     return Uri.https('www.openstreetmap.org', '/', {
       'mlat': '$latitude',
       'mlon': '$longitude',

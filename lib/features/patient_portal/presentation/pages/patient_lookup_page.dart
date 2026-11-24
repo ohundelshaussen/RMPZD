@@ -125,100 +125,151 @@ class _PatientLookupPageState extends State<PatientLookupPage> {
               child: Form(
                 key: _formKey,
                 child: ListView(
-                  padding: const EdgeInsets.fromLTRB(20, 16, 20, 16),
+                  padding: const EdgeInsets.fromLTRB(20, 20, 20, 24),
                   children: [
                     const AppLogo(),
-                    const SizedBox(height: 12),
+                    const SizedBox(height: 16),
                     RoleAccessSwitcher(
                       selectedMode: AccessEntryMode.patient,
                       onSelectStaff: _openStaffLogin,
                     ),
-                    const SizedBox(height: 10),
+                    const SizedBox(height: 16),
                     const Text(
                       'Consulte su resultado con su número de ID y código '
                       '(requiere internet).',
                       textAlign: TextAlign.center,
                       style: TextStyle(
                         fontSize: 13,
+                        height: 1.4,
                         color: AppColors.textSecondary,
                       ),
                     ),
-                    const SizedBox(height: 12),
-                    Card(
-                      child: Padding(
-                        padding: const EdgeInsets.all(14),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.stretch,
-                          children: [
-                            TextFormField(
-                              controller: _documentController,
-                              textCapitalization: TextCapitalization.characters,
-                              autocorrect: false,
-                              enableSuggestions: false,
-                              inputFormatters: [const _UpperCaseTextFormatter()],
-                              decoration: const InputDecoration(
-                                labelText: 'Número de documento / ID',
-                                prefixIcon: Icon(Icons.badge_outlined),
+                    const SizedBox(height: 16),
+                    Container(
+                      padding: const EdgeInsets.all(18),
+                      decoration: BoxDecoration(
+                        color: AppColors.surface,
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(color: AppColors.border),
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          TextFormField(
+                            controller: _documentController,
+                            textCapitalization: TextCapitalization.characters,
+                            autocorrect: false,
+                            enableSuggestions: false,
+                            inputFormatters: [const _UpperCaseTextFormatter()],
+                            decoration: const InputDecoration(
+                              labelText: 'Número de documento / ID',
+                              prefixIcon: Icon(
+                                Icons.badge_outlined,
+                                size: 20,
+                                color: AppColors.textSecondary,
                               ),
-                              validator: (value) =>
-                                  value == null || value.trim().isEmpty
-                                  ? 'Ingrese su número de documento / ID.'
-                                  : null,
-                              onChanged: (_) => provider.recordActivity(),
                             ),
-                            const SizedBox(height: 10),
-                            TextFormField(
-                              controller: _codeController,
-                              textCapitalization: TextCapitalization.characters,
-                              autocorrect: false,
-                              enableSuggestions: false,
-                              inputFormatters: [const _UpperCaseTextFormatter()],
-                              decoration: const InputDecoration(
-                                labelText: 'Código de consulta',
-                                hintText: 'XXXX-XXXX',
-                                prefixIcon: Icon(Icons.key_rounded),
+                            validator: (value) =>
+                                value == null || value.trim().isEmpty
+                                ? 'Ingrese su número de documento / ID.'
+                                : null,
+                            onChanged: (_) => provider.recordActivity(),
+                          ),
+                          const SizedBox(height: 12),
+                          TextFormField(
+                            controller: _codeController,
+                            textCapitalization: TextCapitalization.characters,
+                            autocorrect: false,
+                            enableSuggestions: false,
+                            style: const TextStyle(
+                              fontFamily: 'monospace',
+                              letterSpacing: 1.2,
+                              fontWeight: FontWeight.w600,
+                            ),
+                            inputFormatters: [const _UpperCaseTextFormatter()],
+                            decoration: const InputDecoration(
+                              labelText: 'Código de consulta',
+                              hintText: 'XXXX-XXXX',
+                              prefixIcon: Icon(
+                                Icons.key_rounded,
+                                size: 20,
+                                color: AppColors.textSecondary,
                               ),
-                              validator: (value) {
-                                if (!RegExp(
-                                  r'^(?:[ABCDEFGHJKLMNPQRSTUVWXYZ23456789]{8}|'
-                                  r'[ABCDEFGHJKLMNPQRSTUVWXYZ23456789]{4}-'
-                                  r'[ABCDEFGHJKLMNPQRSTUVWXYZ23456789]{4})$',
-                                ).hasMatch((value ?? '').trim().toUpperCase())) {
-                                  return 'Ingrese el código de 8 caracteres.';
-                                }
-                                return null;
-                              },
-                              onChanged: (_) => provider.recordActivity(),
                             ),
-                            const SizedBox(height: 12),
-                            FilledButton(
-                              onPressed: provider.isLoading ? null : _submit,
-                              child: provider.isLoading
-                                  ? const SizedBox(
-                                      width: 22,
-                                      height: 22,
-                                      child: CircularProgressIndicator(
-                                        strokeWidth: 2,
-                                      ),
-                                    )
-                                  : const Text('Consultar'),
+                            validator: (value) {
+                              if (!RegExp(
+                                r'^(?:[ABCDEFGHJKLMNPQRSTUVWXYZ23456789]{8}|'
+                                r'[ABCDEFGHJKLMNPQRSTUVWXYZ23456789]{4}-'
+                                r'[ABCDEFGHJKLMNPQRSTUVWXYZ23456789]{4})$',
+                              ).hasMatch((value ?? '').trim().toUpperCase())) {
+                                return 'Ingrese el código de 8 caracteres.';
+                              }
+                              return null;
+                            },
+                            onChanged: (_) => provider.recordActivity(),
+                          ),
+                          const SizedBox(height: 16),
+                          FilledButton(
+                            style: FilledButton.styleFrom(
+                              minimumSize: const Size.fromHeight(48),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12),
+                              ),
                             ),
-                          ],
-                        ),
+                            onPressed: provider.isLoading ? null : _submit,
+                            child: provider.isLoading
+                                ? const SizedBox(
+                                    width: 20,
+                                    height: 20,
+                                    child: CircularProgressIndicator(
+                                      strokeWidth: 2,
+                                      color: Colors.white,
+                                    ),
+                                  )
+                                : const Text(
+                                    'Consultar',
+                                    style: TextStyle(
+                                      fontSize: 15,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+                          ),
+                        ],
                       ),
                     ),
                     if (provider.result case final result?
                         when result is! PatientRecordFound) ...[
-                      const SizedBox(height: 10),
+                      const SizedBox(height: 12),
                       _ErrorMessage(_errorMessage(result)),
                     ],
-                    const SizedBox(height: 8),
-                    const Text(
-                      _privacyNote,
-                      textAlign: TextAlign.center,
-                      style: TextStyle(
-                        fontSize: 12,
-                        color: AppColors.textSecondary,
+                    const SizedBox(height: 16),
+                    const Padding(
+                      padding: EdgeInsets.symmetric(horizontal: 8),
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Padding(
+                            padding: EdgeInsets.only(top: 1),
+                            child: Icon(
+                              Icons.lock_outline_rounded,
+                              size: 14,
+                              color: AppColors.textMuted,
+                            ),
+                          ),
+                          SizedBox(width: 6),
+                          Flexible(
+                            child: Text(
+                              _privacyNote,
+                              textAlign: TextAlign.center,
+                              style: TextStyle(
+                                fontSize: 12,
+                                height: 1.4,
+                                color: AppColors.textSecondary,
+                              ),
+                            ),
+                          ),
+                        ],
                       ),
                     ),
                   ],
@@ -261,12 +312,35 @@ class _ErrorMessage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Container(
-    padding: const EdgeInsets.all(14),
+    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
     decoration: BoxDecoration(
-      color: const Color(0xFFFFF7ED),
-      borderRadius: BorderRadius.circular(10),
-      border: Border.all(color: AppColors.secondary),
+      color: const Color(0xFFFFFBEB),
+      borderRadius: BorderRadius.circular(12),
+      border: Border.all(color: AppColors.secondary.withValues(alpha: 0.35)),
     ),
-    child: Text(message, textAlign: TextAlign.center),
+    child: Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Padding(
+          padding: EdgeInsets.only(top: 1),
+          child: Icon(
+            Icons.info_outline_rounded,
+            size: 18,
+            color: AppColors.secondary,
+          ),
+        ),
+        const SizedBox(width: 10),
+        Expanded(
+          child: Text(
+            message,
+            style: const TextStyle(
+              fontSize: 13,
+              height: 1.35,
+              color: AppColors.textPrimary,
+            ),
+          ),
+        ),
+      ],
+    ),
   );
 }

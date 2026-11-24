@@ -318,86 +318,148 @@ class _AdminUsersPageState extends State<AdminUsersPage> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Row(
+                    crossAxisAlignment: CrossAxisAlignment.center,
                     children: [
                       Expanded(
                         child: Text(
-                          isSelf ? '${user.displayName} (Tú)' : user.displayName,
+                          isSelf
+                              ? '${user.displayName} (Tú)'
+                              : user.displayName,
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                           style: const TextStyle(
                             fontWeight: FontWeight.w700,
                             fontSize: 15,
+                            color: AppColors.textPrimary,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      if (user.active)
+                        const Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            SizedBox(
+                              width: 7,
+                              height: 7,
+                              child: DecoratedBox(
+                                decoration: BoxDecoration(
+                                  color: AppColors.riskLow,
+                                  shape: BoxShape.circle,
+                                ),
+                              ),
+                            ),
+                            SizedBox(width: 5),
+                            Text(
+                              'Activo',
+                              style: TextStyle(
+                                fontSize: 11.5,
+                                fontWeight: FontWeight.w600,
+                                color: AppColors.textSecondary,
+                              ),
+                            ),
+                          ],
+                        )
+                      else
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 8,
+                            vertical: 3,
+                          ),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFFEF2F2),
+                            borderRadius: BorderRadius.circular(20),
+                            border: Border.all(
+                              color: AppColors.riskHigh.withValues(alpha: 0.28),
+                            ),
+                          ),
+                          child: const Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              SizedBox(
+                                width: 6,
+                                height: 6,
+                                child: DecoratedBox(
+                                  decoration: BoxDecoration(
+                                    color: AppColors.riskHigh,
+                                    shape: BoxShape.circle,
+                                  ),
+                                ),
+                              ),
+                              SizedBox(width: 5),
+                              Text(
+                                'Inactivo',
+                                style: TextStyle(
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w700,
+                                  color: AppColors.riskHigh,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                    ],
+                  ),
+                  const SizedBox(height: 6),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          user.email,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                            fontSize: 13,
+                            color: AppColors.textSecondary,
                           ),
                         ),
                       ),
                       const SizedBox(width: 8),
                       Container(
                         padding: const EdgeInsets.symmetric(
-                          horizontal: 8,
-                          vertical: 3,
+                          horizontal: 7,
+                          vertical: 2,
                         ),
                         decoration: BoxDecoration(
                           color: isAdmin
-                              ? const Color(0xFFE0F2FE)
-                              : const Color(0xFFF1F5F9),
+                              ? AppColors.primary.withValues(alpha: 0.08)
+                              : AppColors.surfaceVariant,
                           borderRadius: BorderRadius.circular(6),
+                          border: Border.all(
+                            color: isAdmin
+                                ? AppColors.primary.withValues(alpha: 0.25)
+                                : AppColors.border,
+                          ),
                         ),
                         child: Text(
                           user.role.label,
                           style: TextStyle(
                             fontSize: 11,
-                            fontWeight: FontWeight.w700,
+                            fontWeight: FontWeight.w600,
                             color: isAdmin
-                                ? const Color(0xFF0369A1)
+                                ? AppColors.primaryDark
                                 : AppColors.textSecondary,
-                          ),
-                        ),
-                      ),
-                      const SizedBox(width: 6),
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 8,
-                          vertical: 3,
-                        ),
-                        decoration: BoxDecoration(
-                          color: user.active
-                              ? const Color(0xFFDCFCE7)
-                              : const Color(0xFFFEE2E2),
-                          borderRadius: BorderRadius.circular(6),
-                        ),
-                        child: Text(
-                          user.active ? 'Activo' : 'Inactivo',
-                          style: TextStyle(
-                            fontSize: 11,
-                            fontWeight: FontWeight.w700,
-                            color: user.active
-                                ? AppColors.riskLow
-                                : AppColors.riskHigh,
                           ),
                         ),
                       ),
                     ],
                   ),
-                  const SizedBox(height: 6),
-                  Text(
-                    user.email,
-                    style: const TextStyle(
-                      fontSize: 13,
-                      color: AppColors.textSecondary,
-                    ),
-                  ),
-                  const SizedBox(height: 2),
+                  const SizedBox(height: 4),
                   SelectableText(
                     'ID: ${user.id}',
                     style: const TextStyle(
                       fontSize: 11,
+                      fontFamily: 'monospace',
                       color: AppColors.textMuted,
                     ),
                   ),
-                  const SizedBox(height: 10),
+                  const Divider(height: 20, color: AppColors.border),
                   Row(
                     children: [
                       OutlinedButton.icon(
+                        style: OutlinedButton.styleFrom(
+                          visualDensity: VisualDensity.compact,
+                        ),
                         onPressed: provider.isMutating
                             ? null
                             : () => _showEditDialog(context, provider, user),
@@ -407,12 +469,13 @@ class _AdminUsersPageState extends State<AdminUsersPage> {
                       const SizedBox(width: 8),
                       if (!isSelf)
                         TextButton.icon(
+                          style: TextButton.styleFrom(
+                            foregroundColor: AppColors.riskHigh,
+                            visualDensity: VisualDensity.compact,
+                          ),
                           onPressed: provider.isMutating
                               ? null
                               : () => _confirmDelete(context, provider, user),
-                          style: TextButton.styleFrom(
-                            foregroundColor: AppColors.riskHigh,
-                          ),
                           icon: const Icon(Icons.delete_outline, size: 16),
                           label: const Text('Eliminar'),
                         ),

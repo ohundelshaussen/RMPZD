@@ -146,6 +146,75 @@ void main() {
     );
   });
 
+  testWidgets(
+    'HistoryPage renders calm cards and structured detail sheet without overflow on narrow screens',
+    (tester) async {
+      tester.view.physicalSize = const Size(360, 780);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+
+      const code = 'ABCD2345';
+      final repo = _InMemoryHistoryRepository([
+        AssessmentRecord(
+          patient: _patient(
+            'PAC-CRIT',
+            nombrePaciente: 'María Fernanda Rodríguez',
+            hemoglobin: 6.5,
+          ),
+          result: const TriageResult(
+            riskLevel: RiskLevel.alto,
+            probAlto: 0.88,
+            probMedio: 0.08,
+            probBajo: 0.04,
+            riesgoDesenlaceAdverso: true,
+            probDesenlaceAdverso: 0.72,
+            clinicalAlerts: [],
+            hasImmediateEmergency: true,
+          ),
+          uuid: 'uuid-crit-1',
+          ownerId: 'doc-1',
+          consultationCode: code,
+          fechaGuardado: DateTime.utc(2026, 11, 20, 14, 30),
+        ),
+      ]);
+      final historyProvider = HistoryProvider(
+        getAssessmentHistory: GetAssessmentHistoryUseCase(repo),
+        getUnsyncedCount: GetUnsyncedCountUseCase(repo),
+        currentOwnerId: () => 'doc-1',
+      );
+      final syncProvider = SyncProvider.disabled();
+      addTearDown(historyProvider.dispose);
+      addTearDown(syncProvider.dispose);
+
+      await tester.pumpWidget(
+        MultiProvider(
+          providers: [
+            ChangeNotifierProvider<HistoryProvider>.value(
+              value: historyProvider,
+            ),
+            ChangeNotifierProvider<SyncProvider>.value(value: syncProvider),
+          ],
+          child: const MaterialApp(home: HistoryPage()),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.text('María Fernanda Rodríguez'), findsOneWidget);
+      expect(find.text('CÓDIGO ROJO'), findsOneWidget);
+      expect(find.text('Cód. ABCD-2345'), findsOneWidget);
+      expect(tester.takeException(), isNull);
+
+      await tester.tap(find.text('María Fernanda Rodríguez'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Signos vitales y datos clínicos'), findsOneWidget);
+      expect(find.text('115/75 mmHg'), findsOneWidget);
+      expect(find.text('6.5 g/dL'), findsOneWidget);
+      expect(tester.takeException(), isNull);
+    },
+  );
+
   test(
     'HistoryProvider edits pending record and enforces remote guard on synced delete/edit',
     () async {

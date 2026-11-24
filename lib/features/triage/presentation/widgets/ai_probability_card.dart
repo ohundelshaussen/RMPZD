@@ -9,18 +9,24 @@ class AiProbabilityCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final highlightHigh =
+        result.riskLevel == RiskLevel.alto || result.probAlto >= 0.25;
+    final highlightMedium = result.riskLevel == RiskLevel.medio;
+    final highlightLow =
+        result.riskLevel == RiskLevel.bajo && !highlightHigh;
+
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Row(
-              children: const [
+            const Row(
+              children: [
                 Icon(
                   Icons.auto_awesome_rounded,
-                  size: 18,
-                  color: AppColors.primary,
+                  size: 17,
+                  color: AppColors.textSecondary,
                 ),
                 SizedBox(width: 8),
                 Expanded(
@@ -35,47 +41,55 @@ class AiProbabilityCard extends StatelessWidget {
                 ),
               ],
             ),
-            const SizedBox(height: 16),
+            const SizedBox(height: 14),
             _buildProbBar(
               'Alto Riesgo',
               result.probAlto,
-              AppColors.riskHigh,
+              accentColor: AppColors.riskHigh,
+              highlighted: highlightHigh,
               threshold: 0.25,
             ),
-            const SizedBox(height: 10),
+            const SizedBox(height: 11),
             _buildProbBar(
               'Riesgo Moderado',
               result.probMedio,
-              AppColors.riskMedium,
+              accentColor: AppColors.riskMedium,
+              highlighted: highlightMedium,
             ),
-            const SizedBox(height: 10),
-            _buildProbBar('Bajo Riesgo', result.probBajo, AppColors.riskLow),
-            const Divider(height: 24, color: Color(0xFFF1F5F9)),
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text(
-                  'Desenlace Gestacional Estimado:',
-                  style: TextStyle(
-                    fontSize: 12,
-                    color: AppColors.textSecondary,
-                    fontWeight: FontWeight.w500,
-                  ),
+            const SizedBox(height: 11),
+            _buildProbBar(
+              'Bajo Riesgo',
+              result.probBajo,
+              accentColor: AppColors.riskLow,
+              highlighted: highlightLow,
+            ),
+            const Divider(height: 24, color: AppColors.border),
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+              decoration: BoxDecoration(
+                color: AppColors.background,
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(
+                  color: result.riesgoDesenlaceAdverso
+                      ? AppColors.riskHigh.withValues(alpha: 0.28)
+                      : AppColors.border,
                 ),
-                const SizedBox(height: 6),
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 10,
-                    vertical: 6,
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'Desenlace Gestacional Estimado:',
+                    style: TextStyle(
+                      fontSize: 11.5,
+                      color: AppColors.textSecondary,
+                      fontWeight: FontWeight.w500,
+                    ),
                   ),
-                  decoration: BoxDecoration(
-                    color: result.riesgoDesenlaceAdverso
-                        ? const Color(0xFFFEE2E2)
-                        : const Color(0xFFDCFCE7),
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
+                  const SizedBox(height: 5),
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.center,
                     children: [
                       Icon(
                         result.riesgoDesenlaceAdverso
@@ -86,25 +100,25 @@ class AiProbabilityCard extends StatelessWidget {
                             ? AppColors.riskHigh
                             : AppColors.riskLow,
                       ),
-                      const SizedBox(width: 6),
-                      Flexible(
+                      const SizedBox(width: 7),
+                      Expanded(
                         child: Text(
                           result.riesgoDesenlaceAdverso
                               ? 'Posible Complicación Obstétrica (${(result.probDesenlaceAdverso * 100).toStringAsFixed(1)}%)'
                               : 'Desenlace Normal / Estable (${(result.probDesenlaceAdverso * 100).toStringAsFixed(1)}%)',
                           style: TextStyle(
-                            fontSize: 12,
-                            fontWeight: FontWeight.w700,
+                            fontSize: 12.5,
+                            fontWeight: FontWeight.w600,
                             color: result.riesgoDesenlaceAdverso
                                 ? AppColors.riskHigh
-                                : AppColors.riskLow,
+                                : AppColors.textPrimary,
                           ),
                         ),
                       ),
                     ],
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
           ],
         ),
@@ -114,11 +128,13 @@ class AiProbabilityCard extends StatelessWidget {
 
   Widget _buildProbBar(
     String label,
-    double probability,
-    Color color, {
+    double probability, {
+    required Color accentColor,
+    required bool highlighted,
     double? threshold,
   }) {
     final percentage = (probability * 100).toStringAsFixed(1);
+    final barColor = highlighted ? accentColor : const Color(0xFFCBD5E1);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -130,31 +146,37 @@ class AiProbabilityCard extends StatelessWidget {
                 threshold != null
                     ? '$label (Umbral ${(threshold * 100).toInt()}%)'
                     : label,
-                style: const TextStyle(
-                  fontSize: 12,
-                  color: AppColors.textPrimary,
-                  fontWeight: FontWeight.w500,
+                style: TextStyle(
+                  fontSize: 12.5,
+                  color: highlighted
+                      ? AppColors.textPrimary
+                      : AppColors.textSecondary,
+                  fontWeight: highlighted ? FontWeight.w600 : FontWeight.w500,
                 ),
                 overflow: TextOverflow.ellipsis,
               ),
             ),
+            const SizedBox(width: 8),
             Text(
               '$percentage%',
               style: TextStyle(
-                fontSize: 12,
-                fontWeight: FontWeight.w700,
-                color: color,
+                fontSize: 12.5,
+                fontWeight: highlighted ? FontWeight.w700 : FontWeight.w600,
+                color: highlighted
+                    ? AppColors.textPrimary
+                    : AppColors.textSecondary,
+                fontFeatures: const [FontFeature.tabularFigures()],
               ),
             ),
           ],
         ),
-        const SizedBox(height: 4),
+        const SizedBox(height: 5),
         ClipRRect(
           borderRadius: BorderRadius.circular(4),
           child: LinearProgressIndicator(
             value: probability.clamp(0.0, 1.0),
-            backgroundColor: const Color(0xFFF1F5F9),
-            valueColor: AlwaysStoppedAnimation<Color>(color),
+            backgroundColor: AppColors.surfaceVariant,
+            valueColor: AlwaysStoppedAnimation<Color>(barColor),
             minHeight: 6,
           ),
         ),

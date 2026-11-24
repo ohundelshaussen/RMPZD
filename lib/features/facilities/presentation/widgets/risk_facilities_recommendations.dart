@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 
 import '../../../triage/domain/entities/triage_result.dart';
+import '../providers/nearest_facilities_provider.dart';
+import '../services/facility_link_launcher.dart';
 import 'nearest_facilities_section.dart';
 
 class RiskFacilitiesRecommendations extends StatelessWidget {
@@ -21,7 +24,10 @@ class RiskFacilitiesRecommendations extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    if (riskLevel == RiskLevel.bajo) return const SizedBox.shrink();
+    if (context.read<NearestFacilitiesProvider?>() == null ||
+        context.read<FacilityLinkLauncher?>() == null) {
+      return const SizedBox.shrink();
+    }
     final isHighRisk = riskLevel == RiskLevel.alto;
     return NearestFacilitiesSection(
       latitude: latitude,

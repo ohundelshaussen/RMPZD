@@ -30,6 +30,7 @@ import 'package:rmpzd/features/dashboard/domain/usecases/get_dashboard_stats_use
 import 'package:rmpzd/features/dashboard/presentation/providers/dashboard_provider.dart';
 import 'package:rmpzd/features/facilities/data/datasources/facility_local_datasource.dart';
 import 'package:rmpzd/features/facilities/data/datasources/facility_remote_datasource.dart';
+import 'package:rmpzd/features/facilities/data/datasources/facility_seed_datasource.dart';
 import 'package:rmpzd/features/facilities/domain/repositories/facility_repository.dart';
 import 'package:rmpzd/features/facilities/domain/usecases/get_facility_catalog_status_usecase.dart';
 import 'package:rmpzd/features/facilities/domain/usecases/get_nearest_facilities_usecase.dart';
@@ -103,6 +104,7 @@ void main() {
                 context.read<DatabaseHelper>(),
                 context.read<FacilityRemoteDataSource>(),
                 context.read<FacilityLocalDataSource>(),
+                context.read<FacilitySeedDataSource>(),
                 context.read<FacilityRepository>(),
                 context.read<SyncFacilitiesUseCase>(),
                 context.read<GetFacilityCatalogStatusUseCase>(),
@@ -129,7 +131,7 @@ void main() {
                 context.read<SyncProvider>(),
                 context.read<TriageProvider>(),
               ];
-              expect(providers, hasLength(54));
+              expect(providers, hasLength(55));
               return const SizedBox();
             },
           ),

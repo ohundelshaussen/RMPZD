@@ -15,18 +15,19 @@ class ClinicalAlertSection extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         const Padding(
-          padding: EdgeInsets.only(left: 4, bottom: 8),
+          padding: EdgeInsets.only(left: 2, bottom: 8),
           child: Text(
             'Alertas y Recomendaciones Clínicas',
             style: TextStyle(
-              fontSize: 13,
+              fontSize: 12.5,
               fontWeight: FontWeight.w700,
               color: AppColors.textSecondary,
+              letterSpacing: 0.1,
             ),
           ),
         ),
         ...alerts.map((alert) => ClinicalAlertCard(alert: alert)),
-        const SizedBox(height: 16),
+        const SizedBox(height: 6),
       ],
     );
   }
@@ -40,86 +41,120 @@ class ClinicalAlertCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     late final Color alertColor;
+    late final Color cardBackground;
+    late final Color borderColor;
     late final IconData icon;
 
     switch (alert.severity) {
       case AlertSeverity.immediateEmergency:
         alertColor = AppColors.emergencyRed;
+        cardBackground = const Color(0xFFFFFAFA);
+        borderColor = AppColors.emergencyRed.withValues(alpha: 0.28);
         icon = Icons.warning_rounded;
         break;
       case AlertSeverity.warning:
         alertColor = AppColors.riskMedium;
+        cardBackground = AppColors.surface;
+        borderColor = AppColors.border;
         icon = Icons.info_outline_rounded;
         break;
       case AlertSeverity.informational:
         alertColor = AppColors.primary;
+        cardBackground = AppColors.surface;
+        borderColor = AppColors.border;
         icon = Icons.notifications_none_rounded;
         break;
     }
 
-    return Card(
+    return Container(
       margin: const EdgeInsets.only(bottom: 10),
-      child: Padding(
-        padding: const EdgeInsets.all(14),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Icon(icon, size: 18, color: alertColor),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: Text(
-                    alert.title,
-                    style: TextStyle(
-                      fontSize: 13,
-                      fontWeight: FontWeight.w700,
-                      color: alertColor,
-                    ),
+      decoration: BoxDecoration(
+        color: cardBackground,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: borderColor, width: 1),
+      ),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(13),
+        child: IntrinsicHeight(
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Container(width: 4, color: alertColor),
+              Expanded(
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(14, 13, 14, 13),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Icon(icon, size: 17, color: alertColor),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Text(
+                              alert.title,
+                              style: TextStyle(
+                                fontSize: 13.5,
+                                fontWeight: FontWeight.w700,
+                                color:
+                                    alert.severity ==
+                                        AlertSeverity.informational
+                                    ? AppColors.textPrimary
+                                    : alertColor,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 6),
+                      Text(
+                        alert.description,
+                        style: const TextStyle(
+                          fontSize: 12.5,
+                          color: AppColors.textPrimary,
+                          height: 1.4,
+                        ),
+                      ),
+                      const SizedBox(height: 10),
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 10,
+                          vertical: 7,
+                        ),
+                        decoration: BoxDecoration(
+                          color: AppColors.background,
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(color: AppColors.border),
+                        ),
+                        child: Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Icon(
+                              Icons.arrow_right_alt_rounded,
+                              size: 16,
+                              color: alertColor,
+                            ),
+                            const SizedBox(width: 6),
+                            Expanded(
+                              child: Text(
+                                alert.actionRequired,
+                                style: const TextStyle(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w600,
+                                  color: AppColors.textPrimary,
+                                  height: 1.3,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
                   ),
                 ),
-              ],
-            ),
-            const SizedBox(height: 6),
-            Text(
-              alert.description,
-              style: const TextStyle(
-                fontSize: 12,
-                color: AppColors.textPrimary,
-                height: 1.3,
               ),
-            ),
-            const SizedBox(height: 8),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-              decoration: BoxDecoration(
-                color: const Color(0xFFF8FAFC),
-                borderRadius: BorderRadius.circular(8),
-                border: Border.all(color: const Color(0xFFE2E8F0)),
-              ),
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Icon(
-                    Icons.arrow_right_alt_rounded,
-                    size: 16,
-                    color: AppColors.primary,
-                  ),
-                  const SizedBox(width: 6),
-                  Expanded(
-                    child: Text(
-                      alert.actionRequired,
-                      style: const TextStyle(
-                        fontSize: 11,
-                        fontWeight: FontWeight.w600,
-                        color: AppColors.textPrimary,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );

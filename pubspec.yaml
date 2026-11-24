@@ -75,6 +75,7 @@ flutter:
 
   assets:
     - assets/models/model_parameters.json
+    - assets/data/health_facilities_seed.json
     - assets/fonts/Roboto-Regular.ttf
     - assets/fonts/Roboto-Bold.ttf
     - assets/fonts/OFL.txt

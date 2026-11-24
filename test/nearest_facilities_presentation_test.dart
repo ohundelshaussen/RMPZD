@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:latlong2/latlong.dart';
 import 'package:provider/provider.dart';
 import 'package:rmpzd/features/facilities/domain/entities/facility_catalog_status.dart';
 import 'package:rmpzd/features/facilities/domain/entities/health_facility.dart';
@@ -8,15 +9,17 @@ import 'package:rmpzd/features/facilities/domain/repositories/facility_repositor
 import 'package:rmpzd/features/facilities/domain/usecases/get_facility_catalog_status_usecase.dart';
 import 'package:rmpzd/features/facilities/domain/usecases/get_nearest_facilities_usecase.dart';
 import 'package:rmpzd/features/facilities/presentation/pages/facilities_map_page.dart';
+import 'package:rmpzd/features/facilities/presentation/pages/location_picker_page.dart';
 import 'package:rmpzd/features/facilities/presentation/providers/nearest_facilities_provider.dart';
 import 'package:rmpzd/features/facilities/presentation/services/facility_link_launcher.dart';
+import 'package:rmpzd/features/facilities/presentation/widgets/facility_action_buttons.dart';
 import 'package:rmpzd/features/facilities/presentation/widgets/health_facility_list_item.dart';
 import 'package:rmpzd/features/facilities/presentation/widgets/nearest_facilities_section.dart';
 import 'package:rmpzd/features/facilities/presentation/widgets/risk_facilities_recommendations.dart';
 import 'package:rmpzd/features/triage/domain/entities/triage_result.dart';
 
 void main() {
-  testWidgets('risk levels expand high, collapse moderate, and omit low', (
+  testWidgets('risk levels expand high and collapse moderate and low', (
     tester,
   ) async {
     final repository = _FakeFacilityRepository();
@@ -67,7 +70,9 @@ void main() {
         ),
       ),
     );
-    expect(find.text('Centros de salud cercanos'), findsNothing);
+    expect(find.text('Centros de salud cercanos'), findsOneWidget);
+    expect(find.text('Ver centros cercanos'), findsOneWidget);
+    expect(find.text('Obstétrica o urgencias'), findsNothing);
   });
 
   testWidgets('without GPS it shows the municipality list without distances', (
@@ -300,6 +305,112 @@ void main() {
       await tester.tap(find.byTooltip('Cerrar detalle'));
       await tester.pump();
       expect(find.text('Hospital de prueba'), findsNothing);
+    },
+  );
+
+  testWidgets(
+    'FacilitiesMapPage renders zoom controls, legend, selector chips and polyline',
+    (tester) async {
+      final facility = _facility(distanceKm: 1.5);
+      await tester.pumpWidget(
+        MaterialApp(
+          home: FacilitiesMapPage(
+            facilities: [facility],
+            latitude: 11.4,
+            longitude: -72.8,
+            isOnline: true,
+            catalogAvailable: true,
+            launcher: const _UnusedFacilityLinkLauncher(),
+          ),
+        ),
+      );
+      await tester.pump();
+
+      expect(find.text('Tu ubicación'), findsOneWidget);
+      expect(find.text('Más cercano'), findsOneWidget);
+      expect(find.text('Centro de salud'), findsOneWidget);
+      expect(find.byTooltip('Acercar'), findsOneWidget);
+      expect(find.byTooltip('Alejar'), findsOneWidget);
+      expect(find.byTooltip('Ajustar vista'), findsOneWidget);
+      expect(find.text('1. Hospital de prueba (1.5 km)'), findsOneWidget);
+
+      await tester.tap(find.text('1. Hospital de prueba (1.5 km)'));
+      await tester.pump();
+
+      expect(find.text('Hospital de prueba'), findsOneWidget);
+      expect(find.byType(PolylineLayer), findsOneWidget);
+    },
+  );
+
+  testWidgets('LocationPickerPage captures tapped point and returns LatLng', (
+    tester,
+  ) async {
+    LatLng? pickedResult;
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Builder(
+          builder: (context) => Scaffold(
+            body: Center(
+              child: ElevatedButton(
+                onPressed: () async {
+                  pickedResult = await Navigator.of(context).push<LatLng>(
+                    MaterialPageRoute(
+                      builder: (_) => const LocationPickerPage(
+                        initialMunicipality: 'Valledupar',
+                      ),
+                    ),
+                  );
+                },
+                child: const Text('Pick'),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+
+    await tester.tap(find.text('Pick'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Toca el mapa para fijar la ubicación'), findsOneWidget);
+    await tester.tap(find.byType(FlutterMap));
+    await tester.pump(const Duration(milliseconds: 350));
+    await tester.pump();
+
+    expect(find.textContaining('Lat:'), findsOneWidget);
+    await tester.tap(find.text('Usar esta ubicación'));
+    await tester.pumpAndSettle();
+
+    expect(pickedResult, isNotNull);
+    expect(pickedResult!.latitude, closeTo(10.4693, 0.2));
+  });
+
+  testWidgets(
+    'FacilityActionButtons includes route query when origin coordinates are passed',
+    (tester) async {
+      final launcher = _FakeFacilityLinkLauncher(results: [false, true]);
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: FacilityActionButtons(
+              facility: _facility(),
+              launcher: launcher,
+              originLatitude: 10.46,
+              originLongitude: -73.25,
+            ),
+          ),
+        ),
+      );
+
+      await tester.tap(find.text('Cómo llegar'));
+      await tester.pumpAndSettle();
+
+      expect(launcher.calls, hasLength(2));
+      expect(launcher.calls.last.path, '/directions');
+      expect(
+        launcher.calls.last.queryParameters['route'],
+        '10.46,-73.25;11.5,-72.9',
+      );
     },
   );
 }

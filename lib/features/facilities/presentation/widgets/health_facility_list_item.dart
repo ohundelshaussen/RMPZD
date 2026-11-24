@@ -11,6 +11,8 @@ class HealthFacilityListItem extends StatelessWidget {
   final int? number;
   final bool showDistance;
   final VoidCallback? onClose;
+  final double? originLatitude;
+  final double? originLongitude;
 
   const HealthFacilityListItem({
     required this.facility,
@@ -18,52 +20,49 @@ class HealthFacilityListItem extends StatelessWidget {
     this.number,
     this.showDistance = true,
     this.onClose,
+    this.originLatitude,
+    this.originLongitude,
     super.key,
   });
 
   @override
   Widget build(BuildContext context) {
+    final isNearest = showDistance && number == 1;
+    final isOverlayCard = onClose != null;
+
     final services = <_ServiceTagData>[
       if (facility.emergency24h == true)
-        const _ServiceTagData(
-          'Urgencias 24 h',
-          AppColors.emergencyRed,
-          Color(0xFFFEE2E2),
-        ),
+        const _ServiceTagData('Urgencias 24 h', emphasized: true),
       if (facility.obstetricCare == true)
-        const _ServiceTagData(
-          'Atención obstétrica',
-          AppColors.primaryDark,
-          Color(0xFFCCFBF1),
-        ),
-      if (facility.deliveryCare == true)
-        const _ServiceTagData(
-          'Parto',
-          AppColors.primary,
-          Color(0xFFE0F2F1),
-        ),
-      if (facility.adultIcu == true)
-        const _ServiceTagData(
-          'UCI',
-          Color(0xFF0369A1),
-          Color(0xFFE0F2FE),
-        ),
+        const _ServiceTagData('Atención obstétrica', emphasized: true),
+      if (facility.deliveryCare == true) const _ServiceTagData('Parto'),
+      if (facility.adultIcu == true) const _ServiceTagData('UCI'),
       if (facility.verified != true)
-        const _ServiceTagData(
-          'Servicios sin confirmar',
-          AppColors.textSecondary,
-          AppColors.surfaceVariant,
-        ),
+        const _ServiceTagData('Servicios sin confirmar', muted: true),
       if (facility.verified == false)
         const _ServiceTagData(
           'Dato no verificado',
-          AppColors.riskMedium,
-          Color(0xFFFEF3C7),
+          muted: true,
+          dotColor: AppColors.riskMedium,
         ),
     ];
 
+    final cardColor = isOverlayCard || isNearest
+        ? AppColors.surface
+        : AppColors.background;
+    final borderColor = isNearest
+        ? AppColors.primary.withValues(alpha: 0.35)
+        : AppColors.border;
+
     return Card(
-      margin: EdgeInsets.only(bottom: onClose != null ? 0 : 10),
+      elevation: isOverlayCard ? 2 : 0,
+      color: cardColor,
+      surfaceTintColor: Colors.transparent,
+      margin: EdgeInsets.only(bottom: isOverlayCard ? 0 : 10),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(14),
+        side: BorderSide(color: borderColor, width: 1),
+      ),
       child: Padding(
         padding: const EdgeInsets.all(14),
         child: Column(
@@ -74,15 +73,24 @@ class HealthFacilityListItem extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 if (number case final itemNumber?) ...[
-                  CircleAvatar(
-                    radius: 14,
-                    backgroundColor: AppColors.primary.withValues(alpha: 0.12),
-                    foregroundColor: AppColors.primaryDark,
+                  Container(
+                    width: 26,
+                    height: 26,
+                    alignment: Alignment.center,
+                    decoration: BoxDecoration(
+                      color: isNearest
+                          ? AppColors.primary.withValues(alpha: 0.12)
+                          : AppColors.surfaceVariant,
+                      shape: BoxShape.circle,
+                    ),
                     child: Text(
                       '$itemNumber',
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontSize: 12,
                         fontWeight: FontWeight.w700,
+                        color: isNearest
+                            ? AppColors.primaryDark
+                            : AppColors.textSecondary,
                       ),
                     ),
                   ),
@@ -93,28 +101,34 @@ class HealthFacilityListItem extends StatelessWidget {
                     facility.name?.trim().isNotEmpty == true
                         ? facility.name!
                         : 'Centro de salud',
-                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                    style: const TextStyle(
                       fontWeight: FontWeight.w700,
-                      fontSize: 15,
+                      fontSize: 14.5,
+                      color: AppColors.textPrimary,
+                      height: 1.25,
                     ),
                   ),
                 ),
-                if (showDistance && number == 1) ...[
+                if (isNearest) ...[
                   const SizedBox(width: 8),
                   Container(
                     key: const ValueKey('nearest-facility-label'),
                     padding: const EdgeInsets.symmetric(
                       horizontal: 8,
-                      vertical: 4,
+                      vertical: 3,
                     ),
                     decoration: BoxDecoration(
-                      color: Theme.of(context).colorScheme.primaryContainer,
-                      borderRadius: BorderRadius.circular(12),
+                      color: AppColors.primary.withValues(alpha: 0.10),
+                      borderRadius: BorderRadius.circular(20),
+                      border: Border.all(
+                        color: AppColors.primary.withValues(alpha: 0.25),
+                      ),
                     ),
-                    child: Text(
+                    child: const Text(
                       'Más cercano',
                       style: TextStyle(
-                        color: Theme.of(context).colorScheme.onPrimaryContainer,
+                        color: AppColors.primaryDark,
+                        fontSize: 11,
                         fontWeight: FontWeight.w700,
                       ),
                     ),
@@ -130,17 +144,23 @@ class HealthFacilityListItem extends StatelessWidget {
                       minHeight: 32,
                     ),
                     onPressed: closeCallback,
-                    icon: const Icon(Icons.close_rounded, size: 18),
+                    icon: const Icon(
+                      Icons.close_rounded,
+                      size: 18,
+                      color: AppColors.textSecondary,
+                    ),
                   ),
               ],
             ),
-            const SizedBox(height: 4),
+            const SizedBox(height: 5),
             Text(
               '${facility.type ?? 'Tipo sin informar'} · '
               '${facility.careLevel == null ? 'Nivel no informado' : 'Nivel de atención ${facility.careLevel}'}',
-              style: Theme.of(
-                context,
-              ).textTheme.bodyMedium?.copyWith(color: AppColors.textSecondary),
+              style: const TextStyle(
+                fontSize: 12.5,
+                color: AppColors.textSecondary,
+                fontWeight: FontWeight.w500,
+              ),
             ),
             if (facility.municipality?.isNotEmpty == true ||
                 facility.department?.isNotEmpty == true) ...[
@@ -150,9 +170,10 @@ class HealthFacilityListItem extends StatelessWidget {
                     .whereType<String>()
                     .where((value) => value.isNotEmpty)
                     .join(', '),
-                style: Theme.of(
-                  context,
-                ).textTheme.bodySmall?.copyWith(color: AppColors.textMuted),
+                style: const TextStyle(
+                  fontSize: 12,
+                  color: AppColors.textMuted,
+                ),
               ),
             ],
             if (showDistance && facility.distanceKm != null) ...[
@@ -160,35 +181,43 @@ class HealthFacilityListItem extends StatelessWidget {
               Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  const Icon(
+                  Icon(
                     Icons.near_me_outlined,
-                    size: 14,
-                    color: AppColors.primary,
+                    size: 13.5,
+                    color: isNearest ? AppColors.primary : AppColors.textMuted,
                   ),
                   const SizedBox(width: 4),
                   Text(
                     '≈ ${facility.distanceKm!.toStringAsFixed(1).replaceAll('.', ',')} km en línea recta',
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontWeight: FontWeight.w600,
                       fontSize: 12,
-                      color: AppColors.primaryDark,
+                      color: isNearest
+                          ? AppColors.primaryDark
+                          : AppColors.textSecondary,
+                      fontFeatures: const [FontFeature.tabularFigures()],
                     ),
                   ),
                 ],
               ),
             ],
             if (services.isNotEmpty) ...[
-              const SizedBox(height: 8),
+              const SizedBox(height: 9),
               Wrap(
                 spacing: 6,
-                runSpacing: 6,
+                runSpacing: 5,
                 children: [
                   for (final tag in services) _ServiceTag(tag: tag),
                 ],
               ),
             ],
-            const SizedBox(height: 10),
-            FacilityActionButtons(facility: facility, launcher: launcher),
+            const SizedBox(height: 11),
+            FacilityActionButtons(
+              facility: facility,
+              launcher: launcher,
+              originLatitude: originLatitude,
+              originLongitude: originLongitude,
+            ),
           ],
         ),
       ),
@@ -198,10 +227,16 @@ class HealthFacilityListItem extends StatelessWidget {
 
 class _ServiceTagData {
   final String label;
-  final Color textColor;
-  final Color bgColor;
+  final bool emphasized;
+  final bool muted;
+  final Color? dotColor;
 
-  const _ServiceTagData(this.label, this.textColor, this.bgColor);
+  const _ServiceTagData(
+    this.label, {
+    this.emphasized = false,
+    this.muted = false,
+    this.dotColor,
+  });
 }
 
 class _ServiceTag extends StatelessWidget {
@@ -214,16 +249,37 @@ class _ServiceTag extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
       decoration: BoxDecoration(
-        color: tag.bgColor,
+        color: tag.muted ? AppColors.surfaceVariant : AppColors.surface,
         borderRadius: BorderRadius.circular(6),
+        border: Border.all(color: AppColors.border, width: 1),
       ),
-      child: Text(
-        tag.label,
-        style: TextStyle(
-          fontSize: 11,
-          fontWeight: FontWeight.w600,
-          color: tag.textColor,
-        ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          if (tag.dotColor case final dotColor?) ...[
+            Container(
+              width: 6,
+              height: 6,
+              decoration: BoxDecoration(
+                color: dotColor,
+                shape: BoxShape.circle,
+              ),
+            ),
+            const SizedBox(width: 5),
+          ],
+          Text(
+            tag.label,
+            style: TextStyle(
+              fontSize: 11,
+              fontWeight: tag.emphasized ? FontWeight.w600 : FontWeight.w500,
+              color: tag.muted
+                  ? AppColors.textMuted
+                  : (tag.emphasized
+                        ? AppColors.textPrimary
+                        : AppColors.textSecondary),
+            ),
+          ),
+        ],
       ),
     );
   }

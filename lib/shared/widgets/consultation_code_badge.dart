@@ -16,10 +16,10 @@ class ConsultationCodeBadge extends StatelessWidget {
     return Tooltip(
       message: 'Copiar código de consulta',
       child: Material(
-        color: AppColors.primary.withValues(alpha: 0.08),
+        color: AppColors.surfaceVariant,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(6),
-          side: BorderSide(color: AppColors.primary.withValues(alpha: 0.25)),
+          side: const BorderSide(color: AppColors.border),
         ),
         child: InkWell(
           borderRadius: BorderRadius.circular(6),
@@ -35,26 +35,22 @@ class ConsultationCodeBadge extends StatelessWidget {
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                const Icon(
-                  Icons.confirmation_number_outlined,
-                  size: 13,
-                  color: AppColors.primary,
-                ),
-                const SizedBox(width: 4),
                 Text(
                   'Cód. $formatted',
                   style: const TextStyle(
+                    fontFamily: 'monospace',
                     fontSize: 11,
-                    fontWeight: FontWeight.w700,
-                    color: AppColors.primary,
+                    fontWeight: FontWeight.w600,
+                    color: AppColors.textSecondary,
                     letterSpacing: 0.4,
+                    fontFeatures: [FontFeature.tabularFigures()],
                   ),
                 ),
-                const SizedBox(width: 4),
+                const SizedBox(width: 5),
                 const Icon(
                   Icons.copy_rounded,
                   size: 12,
-                  color: AppColors.primary,
+                  color: AppColors.textMuted,
                 ),
               ],
             ),

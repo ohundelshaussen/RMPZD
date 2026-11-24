@@ -36,7 +36,7 @@ class TriageResultPage extends StatelessWidget {
     return Scaffold(
       appBar: AppBar(title: const Text('Dictamen de Triage')),
       body: SingleChildScrollView(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
         child: Center(
           child: ConstrainedBox(
             constraints: const BoxConstraints(maxWidth: 640),
@@ -45,20 +45,18 @@ class TriageResultPage extends StatelessWidget {
               children: [
                 ResultStatusCard(patient: patient, result: result),
                 const SizedBox(height: 16),
-                AiProbabilityCard(result: result),
-                const SizedBox(height: 16),
                 if (result.clinicalAlerts.isNotEmpty)
                   ClinicalAlertSection(alerts: result.clinicalAlerts),
-                if (result.riskLevel.name != 'bajo') ...[
-                  RiskFacilitiesRecommendations(
-                    riskLevel: result.riskLevel,
-                    latitude: patient.latitud,
-                    longitude: patient.longitud,
-                    department: patient.departamento,
-                    municipality: patient.municipio,
-                  ),
-                  const SizedBox(height: 16),
-                ],
+                AiProbabilityCard(result: result),
+                const SizedBox(height: 16),
+                RiskFacilitiesRecommendations(
+                  riskLevel: result.riskLevel,
+                  latitude: patient.latitud,
+                  longitude: patient.longitud,
+                  department: patient.departamento,
+                  municipality: patient.municipio,
+                ),
+                const SizedBox(height: 16),
                 if (provider.isSaved) ...[
                   if (provider.savedAssessment?.consultationCode
                       case final consultationCode?) ...[

@@ -117,18 +117,35 @@ class _ConsultationCodeCardState extends State<ConsultationCodeCard> {
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            SelectableText(
-              ConsultationCodeGenerator.format(code),
-              style: const TextStyle(
-                fontSize: 28,
-                fontWeight: FontWeight.w800,
-                letterSpacing: 2,
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+              decoration: BoxDecoration(
+                color: AppColors.background,
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: AppColors.border),
+              ),
+              child: SelectableText(
+                ConsultationCodeGenerator.format(code),
+                textAlign: TextAlign.center,
+                style: const TextStyle(
+                  fontSize: 24,
+                  fontWeight: FontWeight.w800,
+                  letterSpacing: 2.2,
+                  fontFamily: 'monospace',
+                  color: AppColors.textPrimary,
+                ),
               ),
             ),
             const SizedBox(height: 12),
             const Text(
               'Entregue a la paciente su ID y este código.',
               textAlign: TextAlign.center,
+              style: TextStyle(
+                fontSize: 13,
+                color: AppColors.textSecondary,
+                height: 1.35,
+              ),
             ),
           ],
         ),
@@ -143,7 +160,7 @@ class _ConsultationCodeCardState extends State<ConsultationCodeCard> {
                 dialogContext,
               ).showSnackBar(const SnackBar(content: Text('Código copiado.')));
             },
-            icon: const Icon(Icons.copy_rounded),
+            icon: const Icon(Icons.copy_rounded, size: 18),
             label: const Text('Copiar'),
           ),
           FilledButton(
@@ -185,11 +202,6 @@ class _ConsultationCodeCardState extends State<ConsultationCodeCard> {
         widget.recordUuid == null ||
         widget.regenerateUseCase == null;
     return Card(
-      color: const Color(0xFFE0F2F1),
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(16),
-        side: BorderSide(color: AppColors.primary.withValues(alpha: 0.3)),
-      ),
       child: Padding(
         padding: const EdgeInsets.all(16),
         child: Column(
@@ -199,71 +211,98 @@ class _ConsultationCodeCardState extends State<ConsultationCodeCard> {
               children: [
                 Icon(
                   Icons.verified_user_outlined,
-                  color: AppColors.primary,
-                  size: 20,
+                  color: AppColors.textSecondary,
+                  size: 18,
                 ),
                 SizedBox(width: 8),
                 Expanded(
                   child: Text(
                     'Código de consulta de la paciente',
-                    style: TextStyle(fontWeight: FontWeight.w700, fontSize: 16),
+                    style: TextStyle(
+                      fontWeight: FontWeight.w700,
+                      fontSize: 14,
+                      color: AppColors.textPrimary,
+                    ),
                   ),
                 ),
               ],
             ),
-            const SizedBox(height: 8),
+            const SizedBox(height: 12),
             if (_code != null)
-              Row(
-                children: [
-                  Expanded(
-                    child: SelectableText(
-                      ConsultationCodeGenerator.format(_code!),
-                      style: const TextStyle(
-                        fontSize: 28,
-                        fontWeight: FontWeight.w800,
-                        letterSpacing: 2,
+              Container(
+                padding: const EdgeInsets.fromLTRB(14, 10, 8, 10),
+                decoration: BoxDecoration(
+                  color: AppColors.background,
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: AppColors.border),
+                ),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: SelectableText(
+                        ConsultationCodeGenerator.format(_code!),
+                        style: const TextStyle(
+                          fontSize: 22,
+                          fontWeight: FontWeight.w800,
+                          letterSpacing: 2.2,
+                          fontFamily: 'monospace',
+                          color: AppColors.textPrimary,
+                        ),
                       ),
                     ),
-                  ),
-                  IconButton(
-                    tooltip: 'Copiar código',
-                    onPressed: () async {
-                      await Clipboard.setData(
-                        ClipboardData(
-                          text: ConsultationCodeGenerator.format(_code!),
-                        ),
-                      );
-                      if (!context.mounted) return;
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(content: Text('Código copiado.')),
-                      );
-                    },
-                    icon: const Icon(Icons.copy_rounded),
-                  ),
-                ],
+                    IconButton(
+                      tooltip: 'Copiar código',
+                      visualDensity: VisualDensity.compact,
+                      color: AppColors.primary,
+                      onPressed: () async {
+                        await Clipboard.setData(
+                          ClipboardData(
+                            text: ConsultationCodeGenerator.format(_code!),
+                          ),
+                        );
+                        if (!context.mounted) return;
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(content: Text('Código copiado.')),
+                        );
+                      },
+                      icon: const Icon(Icons.copy_rounded, size: 20),
+                    ),
+                  ],
+                ),
               )
             else if (!widget.adminMode)
               const Text(
                 'Código no disponible en este dispositivo. Se generó en otro '
                 'dispositivo o antes de reinstalar la app.',
+                style: TextStyle(
+                  fontSize: 12.5,
+                  color: AppColors.textSecondary,
+                  height: 1.4,
+                ),
               ),
-            const SizedBox(height: 8),
-            if (_code != null)
+            if (_code != null) ...[
+              const SizedBox(height: 10),
               const Text(
                 'Entregue a la paciente su número de ID y este código para que '
                 'consulte su resultado en la app. Anótelo ahora: por seguridad '
                 'el servidor no puede mostrarlo de nuevo.',
+                style: TextStyle(
+                  fontSize: 12,
+                  color: AppColors.textSecondary,
+                  height: 1.4,
+                ),
               ),
-            const SizedBox(height: 8),
+            ],
+            const SizedBox(height: 12),
             OutlinedButton.icon(
               onPressed: disabled ? null : _regenerate,
               icon: _isLoading
                   ? const SizedBox(
-                      width: 18,
-                      height: 18,
+                      width: 16,
+                      height: 16,
                       child: CircularProgressIndicator(strokeWidth: 2),
                     )
-                  : const Icon(Icons.autorenew_rounded),
+                  : const Icon(Icons.autorenew_rounded, size: 18),
               label: const Text('Generar nuevo código'),
             ),
             if (!_isOnline)
@@ -271,7 +310,11 @@ class _ConsultationCodeCardState extends State<ConsultationCodeCard> {
                 padding: EdgeInsets.only(top: 8),
                 child: Text(
                   'Requiere conexión a internet',
-                  style: TextStyle(fontWeight: FontWeight.w600),
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                    color: AppColors.textSecondary,
+                  ),
                 ),
               )
             else if (notSynced)
@@ -279,7 +322,11 @@ class _ConsultationCodeCardState extends State<ConsultationCodeCard> {
                 padding: EdgeInsets.only(top: 8),
                 child: Text(
                   'Sincronice primero',
-                  style: TextStyle(fontWeight: FontWeight.w600),
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                    color: AppColors.textSecondary,
+                  ),
                 ),
               )
             else if (_message != null)
@@ -287,7 +334,11 @@ class _ConsultationCodeCardState extends State<ConsultationCodeCard> {
                 padding: const EdgeInsets.only(top: 8),
                 child: Text(
                   _message!,
-                  style: const TextStyle(fontWeight: FontWeight.w600),
+                  style: const TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                    color: AppColors.riskHigh,
+                  ),
                 ),
               ),
           ],

@@ -283,6 +283,9 @@ class _FakeConnectivityService implements ConnectivityService {
   Stream<bool> get connectionChanges => const Stream.empty();
 
   @override
+  Future<bool> hasNetworkConnection() async => true;
+
+  @override
   Future<bool> hasInternet() async => true;
 }
 

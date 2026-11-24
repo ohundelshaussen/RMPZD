@@ -20,12 +20,16 @@ class FacilityResultsContent extends StatelessWidget {
   final bool catalogAvailable;
   final String? errorMessage;
   final bool hasAssessmentLocation;
+  final double? assessmentLatitude;
+  final double? assessmentLongitude;
 
   const FacilityResultsContent({
     required this.facilities,
     required this.launcher,
     required this.catalogAvailable,
     required this.hasAssessmentLocation,
+    this.assessmentLatitude,
+    this.assessmentLongitude,
     this.errorMessage,
     super.key,
   });
@@ -111,6 +115,8 @@ class FacilityResultsContent extends StatelessWidget {
               launcher: launcher,
               number: index + 1,
               showDistance: hasAssessmentLocation,
+              originLatitude: assessmentLatitude,
+              originLongitude: assessmentLongitude,
             ),
       ],
     );

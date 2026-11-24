@@ -1,4 +1,5 @@
 import 'package:connectivity_plus/connectivity_plus.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 class ConnectivityService {
@@ -19,6 +20,16 @@ class ConnectivityService {
         }
         return hasInternet();
       }).distinct();
+
+  Future<bool> hasNetworkConnection() async {
+    if (kIsWeb) return true;
+    try {
+      final results = await connectivity.checkConnectivity();
+      return !results.every((result) => result == ConnectivityResult.none);
+    } on Exception {
+      return false;
+    }
+  }
 
   Future<bool> hasInternet() async {
     final results = await connectivity.checkConnectivity();

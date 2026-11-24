@@ -1,7 +1,11 @@
+import 'dart:math' as math;
+
 import 'package:flutter_test/flutter_test.dart';
+import 'package:rmpzd/core/constants/colombia_locations.dart';
 import 'package:rmpzd/core/database/database_helper.dart';
 import 'package:rmpzd/features/facilities/data/datasources/facility_local_datasource.dart';
 import 'package:rmpzd/features/facilities/data/datasources/facility_remote_datasource.dart';
+import 'package:rmpzd/features/facilities/data/datasources/facility_seed_datasource.dart';
 import 'package:rmpzd/features/facilities/data/repositories/facility_repository_impl.dart';
 import 'package:rmpzd/features/facilities/domain/entities/health_facility.dart';
 import 'package:rmpzd/features/facilities/domain/repositories/facility_repository.dart';
@@ -10,7 +14,10 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 
 void main() {
-  setUpAll(sqfliteFfiInit);
+  setUpAll(() {
+    TestWidgetsFlutterBinding.ensureInitialized();
+    sqfliteFfiInit();
+  });
 
   test(
     'GPS search ignores territory and orders facilities across municipalities by distance',
@@ -284,6 +291,231 @@ void main() {
       expect(remote.calls.last.updatedAfter?.isUtc, isTrue);
     },
   );
+
+  test(
+    'seed asset loads verified facilities for all supported municipalities',
+    () async {
+      final facilities = await const AssetFacilitySeedDataSource()
+          .loadSeedFacilities();
+      expect(facilities, hasLength(26));
+      for (final facility in facilities) {
+        expect(facility.active, isTrue, reason: 'Inactive seed ${facility.id}');
+        expect(
+          facility.verified,
+          isTrue,
+          reason: 'Unverified seed ${facility.id}',
+        );
+        expect(
+          facility.repsCode?.trim(),
+          isNotEmpty,
+          reason: 'Missing REPS code for ${facility.id}',
+        );
+        expect(facility.latitude, isNotNull);
+        expect(facility.longitude, isNotNull);
+        expect(
+          facility.latitude!,
+          inInclusiveRange(7.8, 12.6),
+          reason: 'Latitude out of La Guajira/Cesar bounds for ${facility.id}',
+        );
+        expect(
+          facility.longitude!,
+          inInclusiveRange(-74.2, -71.0),
+          reason: 'Longitude out of La Guajira/Cesar bounds for ${facility.id}',
+        );
+      }
+
+      for (var i = 0; i < facilities.length; i++) {
+        for (var j = i + 1; j < facilities.length; j++) {
+          final distanceM = _distanceMeters(
+            facilities[i].latitude!,
+            facilities[i].longitude!,
+            facilities[j].latitude!,
+            facilities[j].longitude!,
+          );
+          expect(
+            distanceM,
+            greaterThan(50.0),
+            reason:
+                'Facilities ${facilities[i].id} and ${facilities[j].id} are too close ($distanceM m)',
+          );
+        }
+      }
+
+      final byId = {for (final f in facilities) f.id: f};
+      expect(byId['seed-guajira-sanjuan-bautista']?.adultIcu, isTrue);
+      expect(byId['seed-cesar-aguachica-local']?.deliveryCare, isTrue);
+
+      final seededMunicipalities = facilities
+          .map((f) => normalizeLocationName(f.municipality))
+          .whereType<String>()
+          .toSet();
+      for (final munis in municipalitiesByDepartment.values) {
+        for (final muni in munis) {
+          expect(
+            seededMunicipalities,
+            contains(normalizeLocationName(muni)),
+            reason: 'Missing seed facility for $muni',
+          );
+          final coords = coordinatesForMunicipality(muni);
+          expect(
+            coords,
+            isNotNull,
+            reason: 'Missing centroid for $muni',
+          );
+          expect(coords!.lat, inInclusiveRange(7.8, 12.6));
+          expect(coords.lng, inInclusiveRange(-74.2, -71.0));
+        }
+      }
+      expect(
+        coordinatesForMunicipality('Agustin Codazzi'),
+        equals(coordinatesForMunicipality('Agustín Codazzi')),
+      );
+    },
+  );
+
+  test(
+    'upgrades stale v1 seed rows to 2026 coordinates without overwriting newer remote rows',
+    () async {
+      SharedPreferences.setMockInitialValues({});
+      final preferences = await SharedPreferences.getInstance();
+      final database = await databaseFactoryFfi.openDatabase(
+        inMemoryDatabasePath,
+        options: OpenDatabaseOptions(
+          version: 5,
+          onCreate: (db, version) => DatabaseHelper.createV5Schema(db),
+        ),
+      );
+      addTearDown(database.close);
+
+      final local = FacilityLocalDataSource(
+        dbHelper: DatabaseHelper.forDatabase(database),
+      );
+      final staleUpdatedAt = DateTime.utc(2026, 11, 24, 0, 0);
+      final newerRemoteUpdatedAt = DateTime.utc(2026, 12, 1, 0, 0);
+      await local.applyFacilities([
+        _facility(
+          'seed-cesar-valledupar-erasmo',
+          name: 'Clínica Erasmo Ltda.',
+          department: 'Cesar',
+          municipality: 'Valledupar',
+          latitude: 10.4682,
+          longitude: -73.2514,
+          emergency24h: true,
+          updatedAt: staleUpdatedAt,
+        ),
+        _facility(
+          'seed-guajira-riohacha-cedes',
+          name: 'Clínica Cedes (Remota más reciente)',
+          department: 'La Guajira',
+          municipality: 'Riohacha',
+          latitude: 11.54500,
+          longitude: -72.91250,
+          obstetricCare: true,
+          emergency24h: true,
+          updatedAt: newerRemoteUpdatedAt,
+        ),
+        _facility(
+          'remote-custom-facility',
+          name: 'Centro Remoto Personalizado',
+          department: 'Cesar',
+          municipality: 'Valledupar',
+          latitude: 10.5000,
+          longitude: -73.2600,
+          obstetricCare: true,
+          emergency24h: true,
+          updatedAt: newerRemoteUpdatedAt,
+        ),
+      ]);
+
+      final repository = FacilityRepositoryImpl(
+        remoteDataSource: _FakeFacilityRemoteDataSource(),
+        localDataSource: local,
+        preferences: preferences,
+        seedDataSource: const AssetFacilitySeedDataSource(),
+      );
+
+      final nearest = await repository.getNearestFacilities(
+        10.4878,
+        -73.2643,
+        limit: 5,
+      );
+      expect(nearest.first.id, 'seed-cesar-valledupar-erasmo');
+      expect(nearest.first.latitude, closeTo(10.487793, 1e-6));
+      expect(nearest.first.longitude, closeTo(-73.264334, 1e-6));
+      expect(nearest.first.repsCode, '200010026901');
+      expect(nearest.first.updatedAt, DateTime.utc(2026, 11, 24, 2, 30));
+
+      final status = await repository.getCatalogStatus();
+      expect(status.availableCount, 27);
+      expect(status.lastUpdatedAt, isNull);
+      expect(preferences.getInt('health_facilities_seed_version'), 2);
+
+      final activeById = {
+        for (final facility in await local.getActiveFacilities())
+          facility.id: facility,
+      };
+      final custom = activeById['remote-custom-facility']!;
+      expect(custom.latitude, 10.5000);
+      expect(custom.longitude, -73.2600);
+      expect(custom.updatedAt, newerRemoteUpdatedAt);
+
+      final newerSeedOverride = activeById['seed-guajira-riohacha-cedes']!;
+      expect(newerSeedOverride.name, 'Clínica Cedes (Remota más reciente)');
+      expect(newerSeedOverride.latitude, 11.54500);
+      expect(newerSeedOverride.longitude, -72.91250);
+      expect(newerSeedOverride.updatedAt, newerRemoteUpdatedAt);
+    },
+  );
+
+  test(
+    'auto-seeds empty database without advancing sync cursor, handles accents, and cascades to department',
+    () async {
+      SharedPreferences.setMockInitialValues({});
+      final preferences = await SharedPreferences.getInstance();
+      final database = await databaseFactoryFfi.openDatabase(
+        inMemoryDatabasePath,
+        options: OpenDatabaseOptions(
+          version: 5,
+          onCreate: (db, version) => DatabaseHelper.createV5Schema(db),
+        ),
+      );
+      addTearDown(database.close);
+      final repository = FacilityRepositoryImpl(
+        remoteDataSource: _FakeFacilityRemoteDataSource(),
+        localDataSource: FacilityLocalDataSource(
+          dbHelper: DatabaseHelper.forDatabase(database),
+        ),
+        preferences: preferences,
+        seedDataSource: const AssetFacilitySeedDataSource(),
+      );
+
+      final status = await repository.getCatalogStatus();
+      expect(status.availableCount, greaterThanOrEqualTo(26));
+      expect(status.lastUpdatedAt, isNull);
+
+      final codazzi = await GetNearestFacilitiesUseCase(repository).execute(
+        null,
+        null,
+        departamento: 'Cesar',
+        municipio: 'Agustin Codazzi',
+      );
+      expect(codazzi, isNotEmpty);
+      expect(
+        codazzi.first.municipality,
+        contains('Codazzi'),
+      );
+
+      final cascade = await GetNearestFacilitiesUseCase(repository).execute(
+        null,
+        null,
+        departamento: 'Cesar',
+        municipio: 'Municipio Inexistente',
+        soloObstetricasOUrgencias: true,
+      );
+      expect(cascade, isNotEmpty);
+      expect(cascade.every((f) => f.department == 'Cesar'), isTrue);
+    },
+  );
 }
 
 Future<(Database, FacilityRepository)> _createRepository() async {
@@ -324,6 +556,7 @@ HealthFacility _facility(
   bool? obstetricCare = false,
   bool? emergency24h = false,
   bool? verified = true,
+  DateTime? updatedAt,
 }) {
   return HealthFacility(
     id: id,
@@ -336,7 +569,27 @@ HealthFacility _facility(
     obstetricCare: obstetricCare,
     emergency24h: emergency24h,
     verified: verified,
+    updatedAt: updatedAt,
   );
+}
+
+double _distanceMeters(
+  double latitude1,
+  double longitude1,
+  double latitude2,
+  double longitude2,
+) {
+  const earthRadiusMeters = 6371008.8;
+  final latDelta = (latitude2 - latitude1) * math.pi / 180;
+  final lngDelta =
+      (((longitude2 - longitude1 + 540) % 360) - 180) * math.pi / 180;
+  final haversine =
+      math.pow(math.sin(latDelta / 2), 2) +
+      math.cos(latitude1 * math.pi / 180) *
+          math.cos(latitude2 * math.pi / 180) *
+          math.pow(math.sin(lngDelta / 2), 2);
+  final centralAngle = 2 * math.asin(math.sqrt(haversine.clamp(0.0, 1.0)));
+  return earthRadiusMeters * centralAngle;
 }
 
 Map<String, dynamic> _remoteFacility(

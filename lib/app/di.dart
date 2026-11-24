@@ -38,6 +38,7 @@ import '../features/dashboard/domain/usecases/get_dashboard_stats_usecase.dart';
 import '../features/dashboard/presentation/providers/dashboard_provider.dart';
 import '../features/facilities/data/datasources/facility_local_datasource.dart';
 import '../features/facilities/data/datasources/facility_remote_datasource.dart';
+import '../features/facilities/data/datasources/facility_seed_datasource.dart';
 import '../features/facilities/data/repositories/facility_repository_impl.dart';
 import '../features/facilities/domain/repositories/facility_repository.dart';
 import '../features/facilities/domain/usecases/get_facility_catalog_status_usecase.dart';
@@ -204,11 +205,15 @@ List<SingleChildWidget> createAppProviders({
       create: (context) =>
           FacilityLocalDataSource(dbHelper: context.read<DatabaseHelper>()),
     ),
+    Provider<FacilitySeedDataSource>(
+      create: (_) => const AssetFacilitySeedDataSource(),
+    ),
     Provider<FacilityRepository>(
       create: (context) => FacilityRepositoryImpl(
         remoteDataSource: context.read<FacilityRemoteDataSource>(),
         localDataSource: context.read<FacilityLocalDataSource>(),
         preferences: sharedPreferences,
+        seedDataSource: context.read<FacilitySeedDataSource>(),
       ),
     ),
     Provider<SyncFacilitiesUseCase>(
@@ -234,7 +239,7 @@ List<SingleChildWidget> createAppProviders({
       create: (context) => NearestFacilitiesProvider(
         getNearestFacilities: context.read<GetNearestFacilitiesUseCase>(),
         getCatalogStatus: context.read<GetFacilityCatalogStatusUseCase>(),
-        checkInternet: context.read<ConnectivityService>().hasInternet,
+        checkInternet: context.read<ConnectivityService>().hasNetworkConnection,
       ),
     ),
     Provider<FacilityLinkLauncher>(

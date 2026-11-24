@@ -2,6 +2,13 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:fake_async/fake_async.dart';
 import 'package:provider/provider.dart';
+import 'package:rmpzd/features/facilities/domain/entities/facility_catalog_status.dart';
+import 'package:rmpzd/features/facilities/domain/entities/health_facility.dart';
+import 'package:rmpzd/features/facilities/domain/repositories/facility_repository.dart';
+import 'package:rmpzd/features/facilities/domain/usecases/get_facility_catalog_status_usecase.dart';
+import 'package:rmpzd/features/facilities/domain/usecases/get_nearest_facilities_usecase.dart';
+import 'package:rmpzd/features/facilities/presentation/providers/nearest_facilities_provider.dart';
+import 'package:rmpzd/features/facilities/presentation/services/facility_link_launcher.dart';
 import 'package:rmpzd/features/patient_portal/domain/entities/patient_record_view.dart';
 import 'package:rmpzd/features/patient_portal/domain/usecases/lookup_patient_records_usecase.dart';
 import 'package:rmpzd/features/patient_portal/presentation/pages/patient_lookup_page.dart';
@@ -273,6 +280,62 @@ void main() {
       expect(find.text(testCase.$2), findsOneWidget);
     });
   }
+
+  testWidgets(
+    'PatientRecordDetailPage displays nearest facilities section when facility providers exist',
+    (tester) async {
+      final portalProvider = PatientPortalProvider(
+        lookupPatientRecords: LookupPatientRecordsUseCase(
+          _FakeLookup(PatientRecordFound(_record())),
+        ),
+      );
+      final facilityRepo = _FakePortalFacilityRepository();
+      final nearestProvider = NearestFacilitiesProvider(
+        getNearestFacilities: GetNearestFacilitiesUseCase(facilityRepo),
+        getCatalogStatus: GetFacilityCatalogStatusUseCase(facilityRepo),
+        checkInternet: () async => true,
+      );
+      addTearDown(portalProvider.dispose);
+      addTearDown(nearestProvider.dispose);
+
+      await tester.pumpWidget(
+        MultiProvider(
+          providers: [
+            ChangeNotifierProvider<PatientPortalProvider>.value(
+              value: portalProvider,
+            ),
+            ChangeNotifierProvider<NearestFacilitiesProvider>.value(
+              value: nearestProvider,
+            ),
+            Provider<FacilityLinkLauncher>.value(
+              value: const _NoOpLauncher(),
+            ),
+          ],
+          child: MaterialApp(
+            home: PatientRecordDetailPage(
+              record: _record(),
+              patientDocument: 'ID-12345678',
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      await tester.scrollUntilVisible(
+        find.text('Ver centros cercanos'),
+        150,
+        scrollable: find.byType(Scrollable).first,
+      );
+      await tester.ensureVisible(find.text('Ver centros cercanos'));
+      await tester.pumpAndSettle();
+      expect(find.text('Centros de salud cercanos'), findsOneWidget);
+      await tester.tap(find.text('Ver centros cercanos'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Hospital Rosario Pumarejo'), findsOneWidget);
+      portalProvider.clear();
+    },
+  );
 }
 
 PatientRecordView _record([String risk = 'Riesgo Moderado']) =>
@@ -351,4 +414,45 @@ class _FakeLookup implements PatientRecordsLookup {
     lastCode = code;
     return response;
   }
+}
+
+class _FakePortalFacilityRepository implements FacilityRepository {
+  @override
+  Future<FacilityCatalogStatus> getCatalogStatus() async =>
+      const FacilityCatalogStatus(availableCount: 1, lastUpdatedAt: null);
+
+  @override
+  Future<List<HealthFacility>> getNearestFacilities(
+    double? latitude,
+    double? longitude, {
+    int limit = 5,
+    bool soloObstetricas = false,
+    bool soloUrgencias = false,
+    bool soloObstetricasOUrgencias = false,
+    String? departamento,
+    String? municipio,
+  }) async => const [
+    HealthFacility(
+      id: 'h-1',
+      name: 'Hospital Rosario Pumarejo',
+      municipality: 'Valledupar',
+      department: 'Cesar',
+      latitude: 10.4693,
+      longitude: -73.2545,
+      verified: true,
+      obstetricCare: true,
+      emergency24h: true,
+      active: true,
+    ),
+  ];
+
+  @override
+  Future<int> syncFacilities() async => 0;
+}
+
+class _NoOpLauncher implements FacilityLinkLauncher {
+  const _NoOpLauncher();
+
+  @override
+  Future<bool> launch(Uri uri) async => true;
 }

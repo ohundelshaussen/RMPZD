@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../../../core/constants/colombia_locations.dart';
 import '../../../auth/presentation/widgets/account_menu_button.dart';
+import '../../../facilities/presentation/providers/facility_provider.dart';
 import '../../domain/entities/patient_assessment.dart';
 import '../providers/triage_provider.dart';
 import '../widgets/clinical_history_section.dart';
@@ -147,6 +148,49 @@ class _TriageFormPageState extends State<TriageFormPage> {
     return double.parse(value.trim().replaceAll(',', '.'));
   }
 
+  Future<void> _estimateDistanceToNearestFacility() async {
+    final facilityProvider = context.read<FacilityProvider?>();
+    final latitude = _identityData.latitud;
+    final longitude = _identityData.longitud;
+    if (facilityProvider == null || latitude == null || longitude == null) {
+      return;
+    }
+
+    try {
+      final nearest = await facilityProvider.findNearest(
+        latitude: latitude,
+        longitude: longitude,
+        limit: 1,
+      );
+      if (!mounted) return;
+      if (nearest.isEmpty || nearest.first.distanceKm == null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('No hay centros geocodificados cercanos disponibles.'),
+          ),
+        );
+        return;
+      }
+      final facility = nearest.first;
+      final kmText = facility.distanceKm!.toStringAsFixed(1);
+      _distanciaController.text = kmText;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            'Distancia estimada: $kmText km hacia ${facility.name ?? 'centro más cercano'}',
+          ),
+        ),
+      );
+    } on Object {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('No se pudo calcular la distancia aproximada.'),
+        ),
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -219,8 +263,33 @@ class _TriageFormPageState extends State<TriageFormPage> {
                   ),
                   PatientIdentitySection(
                     key: ValueKey(_identityFormGeneration),
-                    onChanged: (value) => _identityData = value,
+                    initialMunicipality: _municipio,
+                    onChanged: (value) {
+                      final locationChanged =
+                          value.consentimientoDatos !=
+                              _identityData.consentimientoDatos ||
+                          value.latitud != _identityData.latitud ||
+                          value.longitud != _identityData.longitud;
+                      _identityData = value;
+                      if (locationChanged) setState(() {});
+                    },
                   ),
+                  if (_identityData.consentimientoDatos &&
+                      _identityData.latitud != null &&
+                      _identityData.longitud != null &&
+                      context.read<FacilityProvider?>() != null) ...[
+                    Align(
+                      alignment: Alignment.centerLeft,
+                      child: TextButton.icon(
+                        onPressed: _estimateDistanceToNearestFacility,
+                        icon: const Icon(Icons.straighten_rounded, size: 18),
+                        label: const Text(
+                          'Estimar distancia al centro más cercano',
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                  ],
                   Consumer<TriageProvider>(
                     builder: (context, provider, _) {
                       return ElevatedButton.icon(

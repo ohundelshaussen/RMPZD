@@ -5,6 +5,7 @@ import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 
 import '../../../../core/constants/app_colors.dart';
+import '../../../../core/constants/clinical_thresholds.dart';
 import '../../../../core/constants/colombia_locations.dart';
 import '../../../../core/constants/form_options.dart';
 import '../../../../shared/widgets/consultation_code_badge.dart';
@@ -113,8 +114,11 @@ class _AdminRecordsPageState extends State<AdminRecordsPage> {
         ? null
         : (doctors[filters.doctorId] ?? filters.doctorId);
 
-    return Padding(
+    return Container(
       padding: const EdgeInsets.fromLTRB(16, 6, 16, 10),
+      decoration: const BoxDecoration(
+        border: Border(bottom: BorderSide(color: AppColors.border)),
+      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
@@ -125,7 +129,21 @@ class _AdminRecordsPageState extends State<AdminRecordsPage> {
             onSubmitted: (value) => _submitSearch(value, provider),
             decoration: InputDecoration(
               hintText: 'Buscar por paciente, código de consulta o ID usuario',
-              prefixIcon: const Icon(Icons.search_rounded, size: 20),
+              hintStyle: const TextStyle(
+                fontSize: 13,
+                color: AppColors.textMuted,
+              ),
+              fillColor: AppColors.surface,
+              isDense: true,
+              contentPadding: const EdgeInsets.symmetric(
+                horizontal: 14,
+                vertical: 11,
+              ),
+              prefixIcon: const Icon(
+                Icons.search_rounded,
+                size: 19,
+                color: AppColors.textMuted,
+              ),
               suffixIcon: _searchController.text.isNotEmpty
                   ? IconButton(
                       tooltip: 'Limpiar búsqueda',
@@ -134,7 +152,11 @@ class _AdminRecordsPageState extends State<AdminRecordsPage> {
                         _submitSearch('', provider);
                         setState(() {});
                       },
-                      icon: const Icon(Icons.close_rounded, size: 18),
+                      icon: const Icon(
+                        Icons.close_rounded,
+                        size: 18,
+                        color: AppColors.textSecondary,
+                      ),
                     )
                   : null,
             ),
@@ -164,7 +186,7 @@ class _AdminRecordsPageState extends State<AdminRecordsPage> {
                     ),
                   ),
                 ),
-                const SizedBox(width: 8),
+                const SizedBox(width: 6),
                 _FilterPill(
                   label: filters.department ?? 'Departamento',
                   selected: filters.department != null,
@@ -184,7 +206,7 @@ class _AdminRecordsPageState extends State<AdminRecordsPage> {
                     ),
                   ),
                 ),
-                const SizedBox(width: 8),
+                const SizedBox(width: 6),
                 _FilterPill(
                   label: selectedDoctor ?? 'Médico',
                   selected: filters.doctorId != null,
@@ -203,7 +225,7 @@ class _AdminRecordsPageState extends State<AdminRecordsPage> {
                     ),
                   ),
                 ),
-                const SizedBox(width: 8),
+                const SizedBox(width: 6),
                 _FilterPill(
                   label: _dateRangeLabel(filters),
                   selected: filters.fromDate != null || filters.toDate != null,
@@ -211,9 +233,21 @@ class _AdminRecordsPageState extends State<AdminRecordsPage> {
                   onTap: () => _selectDateRange(provider, filters),
                 ),
                 if (filters.hasActiveFilters) ...[
-                  const SizedBox(width: 8),
-                  ActionChip(
-                    avatar: const Icon(Icons.filter_alt_off_outlined, size: 16),
+                  const SizedBox(width: 6),
+                  TextButton.icon(
+                    style: TextButton.styleFrom(
+                      visualDensity: VisualDensity.compact,
+                      foregroundColor: AppColors.textSecondary,
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 10,
+                        vertical: 6,
+                      ),
+                      textStyle: const TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    icon: const Icon(Icons.filter_alt_off_outlined, size: 15),
                     label: Text('Limpiar (${filters.activeFilterCount})'),
                     onPressed: () {
                       _searchDebounce?.cancel();
@@ -325,7 +359,7 @@ class _AdminRecordsPageState extends State<AdminRecordsPage> {
                                       height: 12,
                                       decoration: BoxDecoration(
                                         shape: BoxShape.circle,
-                                        color: _riskBadgeColors(entry.value).$1,
+                                        color: _riskBadgeStyle(entry.value).$1,
                                       ),
                                     )
                                   : Icon(
@@ -405,7 +439,7 @@ class _AdminRecordsPageState extends State<AdminRecordsPage> {
     return RefreshIndicator(
       onRefresh: provider.loadInitial,
       child: ListView.builder(
-        padding: const EdgeInsets.fromLTRB(16, 4, 16, 16),
+        padding: const EdgeInsets.fromLTRB(16, 12, 16, 20),
         itemCount: provider.records.length + (provider.hasMore ? 1 : 0),
         itemBuilder: (context, index) {
           if (index == provider.records.length) {
@@ -451,151 +485,174 @@ class _AdminRecordsPageState extends State<AdminRecordsPage> {
   ) {
     final date = record.evaluationDate;
     final riskLabel = record.riskLevel ?? 'Riesgo no informado';
-    final (Color badgeColor, Color badgeBg) = _riskBadgeColors(riskLabel);
+    final isHighPriority =
+        record.hasImmediateAlert || riskLabel.contains('Alto');
+    final (badgeFg, badgeBg, badgeBorder) = _riskBadgeStyle(
+      riskLabel,
+      hasAlert: record.hasImmediateAlert,
+    );
     final hasPatientName = record.patientName != null;
 
-    return Card(
+    return Container(
       margin: const EdgeInsets.only(bottom: 10),
-      child: InkWell(
-        borderRadius: BorderRadius.circular(16),
-        onTap: () => _showDetails(context, record, provider),
-        child: Padding(
-          padding: const EdgeInsets.all(14),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: AppColors.border),
+      ),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(13),
+        child: Material(
+          color: Colors.transparent,
+          child: InkWell(
+            onTap: () => _showDetails(context, record, provider),
+            child: IntrinsicHeight(
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
+                  if (isHighPriority)
+                    Container(width: 3.5, color: badgeFg),
                   Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          record.patientName ??
-                              record.patientId ??
-                              'Paciente sin identificador',
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(
-                            fontWeight: FontWeight.w700,
-                            fontSize: 15,
-                          ),
-                        ),
-                        if (hasPatientName && record.patientId != null)
-                          Text(
-                            'ID: ${record.patientId}',
-                            style: const TextStyle(
-                              fontSize: 12,
-                              color: AppColors.textMuted,
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 8,
-                      vertical: 3,
-                    ),
-                    decoration: BoxDecoration(
-                      color: badgeBg,
-                      borderRadius: BorderRadius.circular(6),
-                    ),
-                    child: Text(
-                      riskLabel,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: TextStyle(
-                        fontSize: 11,
-                        color: badgeColor,
-                        fontWeight: FontWeight.w700,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 8),
-              Text(
-                '${record.municipality ?? 'Municipio no informado'}, '
-                '${record.department ?? 'departamento no informado'}',
-                style: const TextStyle(
-                  fontSize: 13,
-                  color: AppColors.textSecondary,
-                ),
-              ),
-              if (record.hasImmediateAlert ||
-                  record.formattedConsultationCode != null) ...[
-                const SizedBox(height: 6),
-                Wrap(
-                  spacing: 6,
-                  runSpacing: 6,
-                  crossAxisAlignment: WrapCrossAlignment.center,
-                  children: [
-                    if (record.hasImmediateAlert)
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 8,
-                          vertical: 4,
-                        ),
-                        decoration: BoxDecoration(
-                          color: const Color(0xFFFEE2E2),
-                          borderRadius: BorderRadius.circular(6),
-                        ),
-                        child: const Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Icon(
-                              Icons.warning_amber_rounded,
-                              size: 15,
-                              color: AppColors.emergencyRed,
-                            ),
-                            SizedBox(width: 5),
-                            Text(
-                              'Alerta clínica inmediata',
-                              style: TextStyle(
-                                fontSize: 11,
-                                fontWeight: FontWeight.w700,
-                                color: AppColors.emergencyRed,
+                    child: Padding(
+                      padding: const EdgeInsets.fromLTRB(14, 13, 14, 12),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      record.patientName ??
+                                          record.patientId ??
+                                          'Paciente sin identificador',
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: const TextStyle(
+                                        fontWeight: FontWeight.w700,
+                                        fontSize: 15,
+                                        color: AppColors.textPrimary,
+                                        letterSpacing: -0.1,
+                                      ),
+                                    ),
+                                    if (hasPatientName &&
+                                        record.patientId != null) ...[
+                                      const SizedBox(height: 1),
+                                      Text(
+                                        'ID: ${record.patientId}',
+                                        style: const TextStyle(
+                                          fontSize: 12,
+                                          color: AppColors.textMuted,
+                                          fontWeight: FontWeight.w500,
+                                        ),
+                                      ),
+                                    ],
+                                  ],
+                                ),
                               ),
+                              const SizedBox(width: 10),
+                              ConstrainedBox(
+                                constraints: const BoxConstraints(
+                                  maxWidth: 165,
+                                ),
+                                child: _AdminRiskPill(
+                                  label: riskLabel,
+                                  foreground: badgeFg,
+                                  background: badgeBg,
+                                  borderColor: badgeBorder,
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 8),
+                          Text(
+                            '${record.municipality ?? 'Municipio no informado'}, '
+                            '${record.department ?? 'departamento no informado'}',
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(
+                              fontSize: 12.5,
+                              color: AppColors.textSecondary,
+                            ),
+                          ),
+                          if (record.hasImmediateAlert) ...[
+                            const SizedBox(height: 6),
+                            const Row(
+                              children: [
+                                Icon(
+                                  Icons.warning_amber_rounded,
+                                  size: 14,
+                                  color: AppColors.emergencyRed,
+                                ),
+                                SizedBox(width: 5),
+                                Expanded(
+                                  child: Text(
+                                    'Alerta clínica inmediata',
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: TextStyle(
+                                      fontSize: 11.5,
+                                      fontWeight: FontWeight.w600,
+                                      color: AppColors.emergencyRed,
+                                    ),
+                                  ),
+                                ),
+                              ],
                             ),
                           ],
-                        ),
+                          const SizedBox(height: 10),
+                          const Divider(
+                            height: 1,
+                            thickness: 1,
+                            color: AppColors.border,
+                          ),
+                          const SizedBox(height: 8),
+                          Row(
+                            children: [
+                              Expanded(
+                                child: Text(
+                                  'Médico: ${record.doctorName ?? 'No informado'}',
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: const TextStyle(
+                                    fontSize: 11.5,
+                                    color: AppColors.textSecondary,
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(width: 8),
+                              Text(
+                                date == null
+                                    ? 'Sin fecha'
+                                    : DateFormat(
+                                        'dd/MM/yyyy',
+                                      ).format(date.toLocal()),
+                                style: const TextStyle(
+                                  fontSize: 11.5,
+                                  color: AppColors.textMuted,
+                                  fontFeatures: [FontFeature.tabularFigures()],
+                                ),
+                              ),
+                            ],
+                          ),
+                          if (record.formattedConsultationCode
+                              case final code?) ...[
+                            const SizedBox(height: 7),
+                            Align(
+                              alignment: Alignment.centerLeft,
+                              child: ConsultationCodeBadge(code: code),
+                            ),
+                          ],
+                        ],
                       ),
-                    if (record.formattedConsultationCode case final code?)
-                      ConsultationCodeBadge(code: code),
-                  ],
-                ),
-              ],
-              const SizedBox(height: 8),
-              Row(
-                children: [
-                  Expanded(
-                    child: Text(
-                      'Médico: ${record.doctorName ?? 'No informado'}',
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
-                        fontSize: 12,
-                        color: AppColors.textSecondary,
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  Text(
-                    date == null
-                        ? 'Sin fecha'
-                        : DateFormat('dd/MM/yyyy').format(date.toLocal()),
-                    style: const TextStyle(
-                      fontSize: 12,
-                      color: AppColors.textMuted,
                     ),
                   ),
                 ],
               ),
-            ],
+            ),
           ),
         ),
       ),
@@ -628,204 +685,360 @@ class _AdminRecordsPageState extends State<AdminRecordsPage> {
     final canEditOrDelete = record.id != null;
     final hasFacilities = context.read<NearestFacilitiesProvider?>() != null;
     final riskLabel = record.riskLevel ?? 'Riesgo no informado';
-    final (badgeColor, badgeBg) = _riskBadgeColors(riskLabel);
+    final (badgeFg, badgeBg, badgeBorder) = _riskBadgeStyle(
+      riskLabel,
+      hasAlert: record.hasImmediateAlert,
+    );
     final date = record.evaluationDate;
+    final formattedDate = date == null
+        ? 'Sin fecha'
+        : DateFormat('dd/MM/yyyy HH:mm').format(date.toLocal());
+    final bpTone = _bloodPressureTone(record.systolic, record.diastolic);
+    final hbTone = _hemoglobinTone(record.hemoglobin);
+    final bmiTone = _bmiTone(record.bmi);
 
     showModalBottomSheet<void>(
       context: context,
       isScrollControlled: true,
+      backgroundColor: AppColors.surface,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
       builder: (sheetContext) => SafeArea(
         child: DraggableScrollableSheet(
           expand: false,
           initialChildSize: 0.85,
           maxChildSize: 0.95,
+          minChildSize: 0.5,
           builder: (sheetContext, controller) => ListView(
             controller: controller,
-            padding: const EdgeInsets.all(20),
+            padding: const EdgeInsets.fromLTRB(20, 12, 20, 24),
             children: [
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          record.patientName ??
-                              record.patientId ??
-                              'Detalle de evaluación',
-                          style: Theme.of(sheetContext).textTheme.titleLarge,
-                        ),
-                        if (record.patientId != null)
+              Center(
+                child: Container(
+                  width: 36,
+                  height: 4,
+                  margin: const EdgeInsets.only(bottom: 16),
+                  decoration: BoxDecoration(
+                    color: AppColors.border,
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+              ),
+              // Hero Risk Summary
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: badgeBg,
+                  borderRadius: BorderRadius.circular(14),
+                  border: Border.all(color: badgeBorder),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    SizedBox(
+                      width: double.infinity,
+                      child: Wrap(
+                        spacing: 8,
+                        runSpacing: 6,
+                        alignment: WrapAlignment.spaceBetween,
+                        crossAxisAlignment: WrapCrossAlignment.center,
+                        children: [
+                          _AdminRiskPill(
+                            label: riskLabel,
+                            foreground: badgeFg,
+                            background: AppColors.surface,
+                            borderColor: badgeBorder,
+                          ),
                           Text(
-                            'ID paciente: ${record.patientId}',
+                            formattedDate,
                             style: const TextStyle(
-                              fontSize: 12,
+                              fontSize: 11.5,
                               color: AppColors.textSecondary,
+                              fontFeatures: [FontFeature.tabularFigures()],
                             ),
                           ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 10,
-                      vertical: 4,
-                    ),
-                    decoration: BoxDecoration(
-                      color: badgeBg,
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: Text(
-                      riskLabel,
-                      style: TextStyle(
-                        fontSize: 12,
-                        fontWeight: FontWeight.w700,
-                        color: badgeColor,
+                        ],
                       ),
                     ),
+                    const SizedBox(height: 10),
+                    Text(
+                      record.patientName ??
+                          record.patientId ??
+                          'Detalle de evaluación',
+                      style: const TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.w700,
+                        color: AppColors.textPrimary,
+                        letterSpacing: -0.2,
+                      ),
+                    ),
+                    if (record.patientId != null) ...[
+                      const SizedBox(height: 2),
+                      Text(
+                        'ID paciente: ${record.patientId}',
+                        style: const TextStyle(
+                          fontSize: 12.5,
+                          color: AppColors.textSecondary,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ],
+                    const SizedBox(height: 6),
+                    Text(
+                      '${record.municipality ?? 'N/D'}, ${record.department ?? 'N/D'}',
+                      style: const TextStyle(
+                        fontSize: 12.5,
+                        color: AppColors.textSecondary,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              if (record.hasImmediateAlert) ...[
+                const SizedBox(height: 12),
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFFEF2F2),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(
+                      color: AppColors.emergencyRed.withValues(alpha: 0.32),
+                    ),
+                  ),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Padding(
+                        padding: EdgeInsets.only(top: 1),
+                        child: Icon(
+                          Icons.warning_amber_rounded,
+                          size: 18,
+                          color: AppColors.emergencyRed,
+                        ),
+                      ),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: Text(
+                          record.alertDescription ??
+                              'Alerta inmediata activada',
+                          style: const TextStyle(
+                            fontSize: 12.5,
+                            height: 1.35,
+                            color: AppColors.emergencyRed,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+              const SizedBox(height: 20),
+              const _AdminSectionTitle('Datos clínicos y signos'),
+              const SizedBox(height: 10),
+              _AdminMetricGrid(
+                items: [
+                  _AdminMetricItem(
+                    label: 'Presión arterial',
+                    value: record.systolic != null && record.diastolic != null
+                        ? '${record.systolic!.toInt()}/${record.diastolic!.toInt()} mmHg'
+                        : 'No informado',
+                    emphasisColor: bpTone,
+                  ),
+                  _AdminMetricItem(
+                    label: 'Hemoglobina',
+                    value: record.hemoglobin != null
+                        ? '${record.hemoglobin} g/dL'
+                        : 'No informado',
+                    emphasisColor: hbTone,
+                  ),
+                  _AdminMetricItem(
+                    label: 'Edad',
+                    value: record.age != null ? '${record.age} años' : '-',
+                  ),
+                  _AdminMetricItem(
+                    label: 'Semanas',
+                    value: record.weeks != null ? '${record.weeks} sem' : '-',
+                  ),
+                  _AdminMetricItem(
+                    label: 'IMC',
+                    value: record.bmi != null ? '${record.bmi} kg/m²' : '-',
+                    emphasisColor: bmiTone,
+                  ),
+                  _AdminMetricItem(
+                    label: 'Controles',
+                    value: record.visits?.toString() ?? '-',
+                  ),
+                  _AdminMetricItem(
+                    label: 'Distancia',
+                    value: record.distanceKm != null
+                        ? '${record.distanceKm} km'
+                        : '-',
+                  ),
+                  _AdminMetricItem(
+                    label: 'Traslado',
+                    value: record.travelTimeHours != null
+                        ? '${record.travelTimeHours} h'
+                        : '-',
                   ),
                 ],
               ),
-              const SizedBox(height: 16),
-              _detailSection('Paciente y ubicación', [
-                _detailField('Identificador', record.patientId),
-                if (record.patientName != null)
-                  _detailField('Nombre', record.patientName),
-                if (record.address != null)
-                  _detailField('Dirección', record.address),
+              const SizedBox(height: 12),
+              _detailField(
+                'Antec. preeclampsia',
+                record.preeclampsiaHistory,
+                emphasisColor: record.preeclampsiaHistory == true
+                    ? AppColors.secondary
+                    : null,
+              ),
+              _detailField(
+                'Antec. diabetes',
+                record.diabetesHistory,
+                emphasisColor: record.diabetesHistory == true
+                    ? AppColors.secondary
+                    : null,
+              ),
+              _detailField(
+                'Parto institucional previo',
+                record.institutionalBirthHistory,
+              ),
+              const Padding(
+                padding: EdgeInsets.symmetric(vertical: 16),
+                child: Divider(height: 1, thickness: 1, color: AppColors.border),
+              ),
+              const _AdminSectionTitle('Estimación de IA'),
+              const SizedBox(height: 10),
+              _AdminProbabilityBar(
+                label: 'Prob. riesgo alto',
+                probability: record.probHigh,
+                threshold: ClinicalThresholds.aiRiskHighThreshold,
+                accentColor: AppColors.riskHigh,
+              ),
+              const SizedBox(height: 10),
+              _AdminProbabilityBar(
+                label: 'Prob. desenlace adverso',
+                probability: record.probAdverse,
+                threshold: ClinicalThresholds.aiAdverseOutcomeThreshold,
+                accentColor: AppColors.secondary,
+              ),
+              const Padding(
+                padding: EdgeInsets.symmetric(vertical: 16),
+                child: Divider(height: 1, thickness: 1, color: AppColors.border),
+              ),
+              const _AdminSectionTitle('Paciente y ubicación'),
+              const SizedBox(height: 8),
+              _detailField('Identificador', record.patientId),
+              if (record.patientName != null)
+                _detailField('Nombre', record.patientName),
+              if (record.address != null)
+                _detailField('Dirección', record.address),
+              _detailField(
+                'Territorio',
+                '${record.municipality ?? 'N/D'}, ${record.department ?? 'N/D'}',
+              ),
+              _detailField('Etnia', record.ethnicity),
+              _detailField('Zona', record.zone),
+              _detailField('Régimen SGSSS', record.affiliation),
+              _detailField(
+                'Consentimiento de datos',
+                record.consentimientoDatos ? 'Autorizado' : 'No autorizado',
+              ),
+              if (record.latitude != null && record.longitude != null)
                 _detailField(
-                  'Territorio',
-                  '${record.municipality ?? 'N/D'}, ${record.department ?? 'N/D'}',
+                  'Coordenadas GPS',
+                  '${record.latitude!.toStringAsFixed(5)}, '
+                      '${record.longitude!.toStringAsFixed(5)}'
+                      '${record.gpsAccuracyM == null ? '' : ' (±${record.gpsAccuracyM!.toStringAsFixed(1)} m)'}',
                 ),
-                _detailField('Etnia', record.ethnicity),
-                _detailField('Zona', record.zone),
-                _detailField('Régimen SGSSS', record.affiliation),
-                _detailField(
-                  'Consentimiento de datos',
-                  record.consentimientoDatos ? 'Autorizado' : 'No autorizado',
-                ),
-                if (record.latitude != null && record.longitude != null)
-                  _detailField(
-                    'Coordenadas GPS',
-                    '${record.latitude!.toStringAsFixed(5)}, '
-                        '${record.longitude!.toStringAsFixed(5)}'
-                        '${record.gpsAccuracyM == null ? '' : ' (±${record.gpsAccuracyM!.toStringAsFixed(1)} m)'}',
-                  ),
-              ]),
               if (hasFacilities) ...[
-                const SizedBox(height: 8),
+                const SizedBox(height: 12),
                 OutlinedButton.icon(
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: AppColors.primary,
+                    side: const BorderSide(color: AppColors.border),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                  ),
                   onPressed: () => _showNearbyFacilities(record),
-                  icon: const Icon(Icons.local_hospital_outlined),
+                  icon: const Icon(Icons.local_hospital_outlined, size: 18),
                   label: const Text('Centros cercanos'),
                 ),
               ],
-              const SizedBox(height: 12),
-              _detailSection('Datos clínicos y signos', [
-                _detailField(
-                  'Edad / Semanas',
-                  '${record.age ?? '-'} años · ${record.weeks ?? '-'} sem',
-                ),
-                _detailField(
-                  'Controles prenatales',
-                  record.visits?.toString(),
-                ),
-                _detailField(
-                  'Distancia / Traslado',
-                  '${record.distanceKm ?? '-'} km · ${record.travelTimeHours ?? '-'} h',
-                ),
-                _detailField(
-                  'Presión arterial',
-                  record.systolic != null && record.diastolic != null
-                      ? '${record.systolic!.toInt()}/${record.diastolic!.toInt()} mmHg'
-                      : null,
-                ),
-                _detailField(
-                  'Hemoglobina / IMC',
-                  '${record.hemoglobin ?? '-'} g/dL · ${record.bmi ?? '-'} kg/m²',
-                ),
-                _detailField('Antec. preeclampsia', record.preeclampsiaHistory),
-                _detailField('Antec. diabetes', record.diabetesHistory),
-                _detailField(
-                  'Parto institucional previo',
-                  record.institutionalBirthHistory,
-                ),
-              ]),
-              const SizedBox(height: 12),
-              _detailSection('Estimación de IA y alerta', [
-                _detailField(
-                  'Prob. riesgo alto',
-                  record.probHigh == null
-                      ? null
-                      : '${(record.probHigh! * 100).toStringAsFixed(1)} %',
-                ),
-                _detailField(
-                  'Prob. desenlace adverso',
-                  record.probAdverse == null
-                      ? null
-                      : '${(record.probAdverse! * 100).toStringAsFixed(1)} %',
-                ),
-                if (record.hasImmediateAlert)
-                  _detailField(
-                    'Alerta clínica',
-                    record.alertDescription ?? 'Alerta inmediata activada',
-                  ),
-                if (record.formattedConsultationCode case final code?)
-                  Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 4),
-                    child: Row(
-                      children: [
-                        const Expanded(
-                          flex: 2,
-                          child: Text(
-                            'Código de consulta',
-                            style: TextStyle(
-                              color: AppColors.textSecondary,
-                              fontSize: 12,
-                              fontWeight: FontWeight.w600,
-                            ),
+              const Padding(
+                padding: EdgeInsets.symmetric(vertical: 16),
+                child: Divider(height: 1, thickness: 1, color: AppColors.border),
+              ),
+              const _AdminSectionTitle('Código de consulta y auditoría'),
+              const SizedBox(height: 8),
+              if (record.formattedConsultationCode case final code?)
+                Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 4),
+                  child: Row(
+                    children: [
+                      const Expanded(
+                        flex: 2,
+                        child: Text(
+                          'Código de consulta',
+                          style: TextStyle(
+                            color: AppColors.textSecondary,
+                            fontSize: 12.5,
+                            fontWeight: FontWeight.w500,
                           ),
                         ),
-                        Expanded(
-                          flex: 3,
-                          child: Align(
-                            alignment: Alignment.centerRight,
-                            child: ConsultationCodeBadge(code: code),
-                          ),
+                      ),
+                      Expanded(
+                        flex: 3,
+                        child: Align(
+                          alignment: Alignment.centerRight,
+                          child: ConsultationCodeBadge(code: code),
                         ),
-                      ],
-                    ),
-                  )
-                else
-                  _detailField(
-                    'Código de consulta',
-                    record.hasConsultationCodeHash
-                        ? 'Protegido en servidor (solo hash)'
-                        : 'No disponible en nube',
+                      ),
+                    ],
                   ),
-              ]),
-              const SizedBox(height: 12),
-              _detailSection('Auditoría del registro', [
-                _detailField('Médico', record.doctorName ?? 'No informado'),
-                if (record.doctorEmail != null)
-                  _detailField('Correo del médico', record.doctorEmail),
-                if (record.doctorId != null)
-                  _detailField('ID de usuario (médico)', record.doctorId),
-                if (record.id != null)
-                  _detailField('ID de registro', record.id),
+                )
+              else
                 _detailField(
-                  'Fecha de evaluación',
-                  date == null
-                      ? null
-                      : DateFormat('dd/MM/yyyy HH:mm').format(date.toLocal()),
+                  'Código de consulta',
+                  record.hasConsultationCodeHash
+                      ? 'Protegido en servidor (solo hash)'
+                      : 'No disponible en nube',
+                  mutedValue: true,
                 ),
-              ]),
+              _detailField('Médico', record.doctorName ?? 'No informado'),
+              if (record.doctorEmail != null)
+                _detailField(
+                  'Correo del médico',
+                  record.doctorEmail,
+                  mutedValue: true,
+                ),
+              if (record.doctorId != null)
+                _detailField(
+                  'ID de usuario (médico)',
+                  record.doctorId,
+                  monospace: true,
+                  mutedValue: true,
+                ),
+              if (record.id != null)
+                _detailField(
+                  'ID de registro',
+                  record.id,
+                  monospace: true,
+                  mutedValue: true,
+                ),
+              _detailField(
+                'Fecha de evaluación',
+                date == null
+                    ? null
+                    : DateFormat('dd/MM/yyyy HH:mm').format(date.toLocal()),
+                mutedValue: true,
+              ),
               if (record.id case final recordId?)
                 if (sheetContext.read<RegenerateConsultationCodeUseCase?>()
                     case final regenerateUseCase?) ...[
-                  const SizedBox(height: 12),
+                  const SizedBox(height: 14),
                   ConsultationCodeCard(
                     recordUuid: recordId,
                     regenerateUseCase: regenerateUseCase,
@@ -833,18 +1046,26 @@ class _AdminRecordsPageState extends State<AdminRecordsPage> {
                   ),
                 ],
               if (canEditOrDelete) ...[
-                const SizedBox(height: 16),
+                const SizedBox(height: 18),
                 Row(
                   children: [
                     Expanded(
                       child: OutlinedButton.icon(
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: AppColors.textPrimary,
+                          side: const BorderSide(color: AppColors.border),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          padding: const EdgeInsets.symmetric(vertical: 12),
+                        ),
                         onPressed: provider.isMutating
                             ? null
                             : () {
                                 Navigator.pop(sheetContext);
                                 _showEditDialog(context, provider, record);
                               },
-                        icon: const Icon(Icons.edit_outlined, size: 18),
+                        icon: const Icon(Icons.edit_outlined, size: 17),
                         label: const Text('Editar'),
                       ),
                     ),
@@ -853,7 +1074,13 @@ class _AdminRecordsPageState extends State<AdminRecordsPage> {
                       child: OutlinedButton.icon(
                         style: OutlinedButton.styleFrom(
                           foregroundColor: AppColors.riskHigh,
-                          side: const BorderSide(color: AppColors.riskHigh),
+                          side: BorderSide(
+                            color: AppColors.riskHigh.withValues(alpha: 0.4),
+                          ),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          padding: const EdgeInsets.symmetric(vertical: 12),
                         ),
                         onPressed: provider.isMutating
                             ? null
@@ -863,7 +1090,7 @@ class _AdminRecordsPageState extends State<AdminRecordsPage> {
                                 provider,
                                 record,
                               ),
-                        icon: const Icon(Icons.delete_outline, size: 18),
+                        icon: const Icon(Icons.delete_outline, size: 17),
                         label: const Text('Eliminar'),
                       ),
                     ),
@@ -1187,38 +1414,22 @@ class _AdminRecordsPageState extends State<AdminRecordsPage> {
     );
   }
 
-  Widget _detailSection(String title, List<Widget> rows) {
-    return Container(
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: AppColors.surfaceVariant.withValues(alpha: 0.45),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: AppColors.border),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Text(
-            title,
-            style: const TextStyle(
-              fontWeight: FontWeight.w700,
-              fontSize: 13,
-              color: AppColors.primaryDark,
-            ),
-          ),
-          const SizedBox(height: 8),
-          ...rows,
-        ],
-      ),
-    );
-  }
-
-  Widget _detailField(String label, Object? value) {
+  Widget _detailField(
+    String label,
+    Object? value, {
+    Color? emphasisColor,
+    bool monospace = false,
+    bool mutedValue = false,
+  }) {
     final displayValue = value == null
         ? 'No informado'
         : value is bool
         ? (value ? 'Sí' : 'No')
         : value.toString();
+    final valueColor =
+        emphasisColor ??
+        (mutedValue ? AppColors.textSecondary : AppColors.textPrimary);
+
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 4),
       child: Row(
@@ -1230,16 +1441,22 @@ class _AdminRecordsPageState extends State<AdminRecordsPage> {
               label,
               style: const TextStyle(
                 color: AppColors.textSecondary,
-                fontSize: 12,
-                fontWeight: FontWeight.w600,
+                fontSize: 12.5,
+                fontWeight: FontWeight.w500,
               ),
             ),
           ),
+          const SizedBox(width: 12),
           Expanded(
             flex: 3,
             child: Text(
               displayValue,
-              style: const TextStyle(fontSize: 12),
+              style: TextStyle(
+                fontSize: 12.5,
+                fontFamily: monospace ? 'monospace' : null,
+                fontWeight: mutedValue ? FontWeight.w500 : FontWeight.w600,
+                color: valueColor,
+              ),
               textAlign: TextAlign.end,
             ),
           ),
@@ -1248,17 +1465,73 @@ class _AdminRecordsPageState extends State<AdminRecordsPage> {
     );
   }
 
-  (Color, Color) _riskBadgeColors(String riskLabel) {
+  (Color, Color, Color) _riskBadgeStyle(
+    String riskLabel, {
+    bool hasAlert = false,
+  }) {
+    if (hasAlert) {
+      return (
+        AppColors.emergencyRed,
+        const Color(0xFFFEF2F2),
+        AppColors.emergencyRed.withValues(alpha: 0.30),
+      );
+    }
     if (riskLabel.contains('Alto')) {
-      return (AppColors.riskHigh, const Color(0xFFFEE2E2));
+      return (
+        AppColors.riskHigh,
+        const Color(0xFFFEF2F2),
+        AppColors.riskHigh.withValues(alpha: 0.28),
+      );
     }
     if (riskLabel.contains('Moderado') || riskLabel.contains('Medio')) {
-      return (AppColors.riskMedium, const Color(0xFFFEF3C7));
+      return (
+        const Color(0xFFB45309),
+        const Color(0xFFFFFBEB),
+        AppColors.riskMedium.withValues(alpha: 0.32),
+      );
     }
     if (riskLabel.contains('Bajo')) {
-      return (AppColors.riskLow, const Color(0xFFDCFCE7));
+      return (
+        const Color(0xFF047857),
+        const Color(0xFFF0FDF4),
+        AppColors.riskLow.withValues(alpha: 0.25),
+      );
     }
-    return (AppColors.textSecondary, AppColors.surfaceVariant);
+    return (
+      AppColors.textSecondary,
+      AppColors.surfaceVariant,
+      AppColors.border,
+    );
+  }
+
+  Color? _bloodPressureTone(double? systolic, double? diastolic) {
+    if (systolic == null && diastolic == null) return null;
+    if ((systolic ?? 0) >= ClinicalThresholds.severeSystolicCrisis ||
+        (diastolic ?? 0) >= ClinicalThresholds.severeDiastolicCrisis) {
+      return AppColors.emergencyRed;
+    }
+    if ((systolic ?? 0) >= ClinicalThresholds.moderateSystolicCrisis ||
+        (diastolic ?? 0) >= ClinicalThresholds.moderateDiastolicCrisis) {
+      return AppColors.secondary;
+    }
+    return null;
+  }
+
+  Color? _hemoglobinTone(double? hemoglobin) {
+    if (hemoglobin == null || hemoglobin <= 0) return null;
+    if (hemoglobin < ClinicalThresholds.severeAnemia) {
+      return AppColors.emergencyRed;
+    }
+    if (hemoglobin < ClinicalThresholds.mildAnemia) {
+      return AppColors.secondary;
+    }
+    return null;
+  }
+
+  Color? _bmiTone(double? bmi) {
+    if (bmi == null || bmi <= 0) return null;
+    if (bmi < 18.5 || bmi >= 30.0) return AppColors.secondary;
+    return null;
   }
 
   String _dateRangeLabel(AdminAssessmentFilters filters) {
@@ -1310,9 +1583,10 @@ class _FilterPill extends StatelessWidget {
   Widget build(BuildContext context) {
     final borderColor = selected ? AppColors.primary : AppColors.border;
     final bgColor = selected
-        ? AppColors.primary.withValues(alpha: 0.1)
+        ? AppColors.primary.withValues(alpha: 0.09)
         : AppColors.surface;
-    final fgColor = selected ? AppColors.primaryDark : AppColors.textPrimary;
+    final fgColor = selected ? AppColors.primaryDark : AppColors.textSecondary;
+    final chevronColor = selected ? AppColors.primaryDark : AppColors.textMuted;
 
     return Material(
       color: bgColor,
@@ -1324,12 +1598,12 @@ class _FilterPill extends StatelessWidget {
         borderRadius: BorderRadius.circular(20),
         onTap: onTap,
         child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+          padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 7),
           child: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Icon(icon, size: 15, color: fgColor),
-              const SizedBox(width: 6),
+              Icon(icon, size: 14, color: fgColor),
+              const SizedBox(width: 5),
               ConstrainedBox(
                 constraints: const BoxConstraints(maxWidth: 160),
                 child: Text(
@@ -1338,17 +1612,254 @@ class _FilterPill extends StatelessWidget {
                   overflow: TextOverflow.ellipsis,
                   style: TextStyle(
                     fontSize: 12,
-                    fontWeight: selected ? FontWeight.w700 : FontWeight.w600,
+                    fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
                     color: fgColor,
                   ),
                 ),
               ),
-              const SizedBox(width: 4),
-              Icon(Icons.keyboard_arrow_down_rounded, size: 16, color: fgColor),
+              const SizedBox(width: 3),
+              Icon(
+                Icons.keyboard_arrow_down_rounded,
+                size: 15,
+                color: chevronColor,
+              ),
             ],
           ),
         ),
       ),
+    );
+  }
+}
+
+class _AdminRiskPill extends StatelessWidget {
+  final String label;
+  final Color foreground;
+  final Color background;
+  final Color borderColor;
+
+  const _AdminRiskPill({
+    required this.label,
+    required this.foreground,
+    required this.background,
+    required this.borderColor,
+  });
+
+  @override
+  Widget build(BuildContext context) => Container(
+    padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 3.5),
+    decoration: BoxDecoration(
+      color: background,
+      borderRadius: BorderRadius.circular(6),
+      border: Border.all(color: borderColor),
+    ),
+    child: Text(
+      label,
+      maxLines: 1,
+      overflow: TextOverflow.ellipsis,
+      style: TextStyle(
+        fontSize: 11,
+        color: foreground,
+        fontWeight: FontWeight.w700,
+      ),
+    ),
+  );
+}
+
+class _AdminSectionTitle extends StatelessWidget {
+  final String text;
+
+  const _AdminSectionTitle(this.text);
+
+  @override
+  Widget build(BuildContext context) => Text(
+    text,
+    style: const TextStyle(
+      fontSize: 12.5,
+      fontWeight: FontWeight.w700,
+      color: AppColors.textSecondary,
+      letterSpacing: 0.2,
+    ),
+  );
+}
+
+class _AdminMetricItem {
+  final String label;
+  final String value;
+  final Color? emphasisColor;
+
+  const _AdminMetricItem({
+    required this.label,
+    required this.value,
+    this.emphasisColor,
+  });
+}
+
+class _AdminMetricGrid extends StatelessWidget {
+  final List<_AdminMetricItem> items;
+
+  const _AdminMetricGrid({required this.items});
+
+  @override
+  Widget build(BuildContext context) {
+    final rows = <Widget>[];
+    for (var i = 0; i < items.length; i += 2) {
+      final left = items[i];
+      final right = i + 1 < items.length ? items[i + 1] : null;
+      if (i > 0) {
+        rows.add(
+          const Divider(height: 1, thickness: 1, color: AppColors.border),
+        );
+      }
+      rows.add(
+        IntrinsicHeight(
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Expanded(child: _AdminMetricCell(item: left)),
+              const VerticalDivider(
+                width: 1,
+                thickness: 1,
+                color: AppColors.border,
+              ),
+              Expanded(
+                child: right != null
+                    ? _AdminMetricCell(item: right)
+                    : const SizedBox.shrink(),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
+    return Container(
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: AppColors.border),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: rows,
+      ),
+    );
+  }
+}
+
+class _AdminMetricCell extends StatelessWidget {
+  final _AdminMetricItem item;
+
+  const _AdminMetricCell({required this.item});
+
+  @override
+  Widget build(BuildContext context) => Padding(
+    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            if (item.emphasisColor != null) ...[
+              Container(
+                width: 6,
+                height: 6,
+                decoration: BoxDecoration(
+                  color: item.emphasisColor,
+                  shape: BoxShape.circle,
+                ),
+              ),
+              const SizedBox(width: 5),
+            ],
+            Expanded(
+              child: Text(
+                item.label,
+                style: const TextStyle(
+                  fontSize: 11,
+                  color: AppColors.textSecondary,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 3),
+        Text(
+          item.value,
+          style: TextStyle(
+            fontSize: 14,
+            fontWeight: FontWeight.w700,
+            color: item.emphasisColor ?? AppColors.textPrimary,
+            fontFeatures: const [FontFeature.tabularFigures()],
+          ),
+        ),
+      ],
+    ),
+  );
+}
+
+class _AdminProbabilityBar extends StatelessWidget {
+  final String label;
+  final double? probability;
+  final double threshold;
+  final Color accentColor;
+
+  const _AdminProbabilityBar({
+    required this.label,
+    required this.probability,
+    required this.threshold,
+    required this.accentColor,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final clamped = probability?.clamp(0.0, 1.0);
+    final isElevated = clamped != null && clamped >= threshold;
+    final barColor = isElevated ? accentColor : AppColors.textMuted;
+    final displayText = probability == null
+        ? 'No informado'
+        : '${(probability! * 100).toStringAsFixed(1)} %';
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Row(
+          children: [
+            Expanded(
+              child: Text(
+                label,
+                style: const TextStyle(
+                  fontSize: 12.5,
+                  color: AppColors.textSecondary,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            ),
+            Text(
+              displayText,
+              style: TextStyle(
+                fontSize: 13,
+                fontWeight: FontWeight.w700,
+                color: isElevated ? accentColor : AppColors.textPrimary,
+                fontFeatures: const [FontFeature.tabularFigures()],
+              ),
+            ),
+          ],
+        ),
+        if (clamped != null) ...[
+          const SizedBox(height: 5),
+          ClipRRect(
+            borderRadius: BorderRadius.circular(4),
+            child: LinearProgressIndicator(
+              value: clamped,
+              minHeight: 5,
+              backgroundColor: AppColors.surfaceVariant,
+              valueColor: AlwaysStoppedAnimation<Color>(
+                barColor.withValues(alpha: isElevated ? 0.85 : 0.4),
+              ),
+            ),
+          ),
+        ],
+      ],
     );
   }
 }

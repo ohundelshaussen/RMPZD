@@ -1,10 +1,11 @@
 import 'dart:async';
 
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:geolocator/geolocator.dart';
+import 'package:latlong2/latlong.dart';
 
+import '../../../facilities/presentation/pages/location_picker_page.dart';
 import 'form_section_header.dart';
 
 class PatientIdentityData {
@@ -64,10 +65,6 @@ class GeolocatorLocationCaptureService implements LocationCaptureService {
 
   @override
   Future<CapturedLocation> captureCurrentLocation() async {
-    if (kIsWeb || defaultTargetPlatform == TargetPlatform.windows) {
-      throw const LocationCaptureException(LocationCaptureFailure.unsupported);
-    }
-
     try {
       if (!await Geolocator.isLocationServiceEnabled()) {
         throw const LocationCaptureException(
@@ -134,10 +131,12 @@ enum _CaptureStatus { idle, capturing, captured, error }
 class PatientIdentitySection extends StatefulWidget {
   final ValueChanged<PatientIdentityData> onChanged;
   final LocationCaptureService? locationService;
+  final String? initialMunicipality;
 
   const PatientIdentitySection({
     required this.onChanged,
     this.locationService,
+    this.initialMunicipality,
     super.key,
   });
 
@@ -294,6 +293,31 @@ class _PatientIdentitySectionState extends State<PatientIdentitySection> {
     _emitData();
   }
 
+  Future<void> _pickOnMap() async {
+    final picked = await Navigator.of(context).push<LatLng>(
+      MaterialPageRoute(
+        builder: (_) => LocationPickerPage(
+          initialLatitude: _location?.latitude,
+          initialLongitude: _location?.longitude,
+          initialMunicipality: widget.initialMunicipality,
+        ),
+      ),
+    );
+    if (picked == null || !mounted) return;
+    setState(() {
+      _location = CapturedLocation(
+        latitude: picked.latitude,
+        longitude: picked.longitude,
+        accuracyMeters: 25.0,
+      );
+      _locationCapturedAt = DateTime.now().toUtc();
+      _locationMessage = null;
+      _locationFailure = null;
+      _captureStatus = _CaptureStatus.captured;
+    });
+    _emitData();
+  }
+
   Future<void> _openSettings() async {
     try {
       final opened = switch (_locationFailure) {
@@ -416,6 +440,15 @@ class _PatientIdentitySectionState extends State<PatientIdentitySection> {
                         ? 'Capturar de nuevo'
                         : 'Capturar ubicación actual',
                   ),
+                ),
+                const SizedBox(height: 8),
+                OutlinedButton.icon(
+                  onPressed:
+                      !_consent || _captureStatus == _CaptureStatus.capturing
+                      ? null
+                      : _pickOnMap,
+                  icon: const Icon(Icons.map_outlined),
+                  label: const Text('Elegir en el mapa'),
                 ),
                 if (_captureStatus == _CaptureStatus.captured &&
                     _location != null) ...[

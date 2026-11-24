@@ -3,6 +3,7 @@ import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 
 import '../../../../core/constants/app_colors.dart';
+import '../../../../core/constants/clinical_thresholds.dart';
 import '../../../../core/constants/colombia_locations.dart';
 import '../../../../core/constants/form_options.dart';
 import '../../../../core/constants/input_limits.dart';
@@ -139,6 +140,8 @@ class _HistoryPageState extends State<HistoryPage> {
   }
 
   Widget _buildSearchAndFilters(HistoryProvider provider) {
+    final allSelected = !provider.onlyPending && provider.riskFilter == null;
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -150,7 +153,21 @@ class _HistoryPageState extends State<HistoryPage> {
           },
           decoration: InputDecoration(
             hintText: 'Buscar por ID, nombre, código o municipio...',
-            prefixIcon: const Icon(Icons.search_rounded, size: 20),
+            hintStyle: const TextStyle(
+              fontSize: 13,
+              color: AppColors.textMuted,
+            ),
+            fillColor: AppColors.surface,
+            isDense: true,
+            contentPadding: const EdgeInsets.symmetric(
+              horizontal: 14,
+              vertical: 11,
+            ),
+            prefixIcon: const Icon(
+              Icons.search_rounded,
+              size: 19,
+              color: AppColors.textMuted,
+            ),
             suffixIcon: _searchController.text.isNotEmpty
                 ? IconButton(
                     tooltip: 'Limpiar búsqueda',
@@ -159,45 +176,51 @@ class _HistoryPageState extends State<HistoryPage> {
                       provider.setSearchQuery('');
                       setState(() {});
                     },
-                    icon: const Icon(Icons.close_rounded, size: 18),
+                    icon: const Icon(
+                      Icons.close_rounded,
+                      size: 18,
+                      color: AppColors.textSecondary,
+                    ),
                   )
                 : null,
           ),
         ),
-        const SizedBox(height: 8),
+        const SizedBox(height: 10),
         SingleChildScrollView(
           scrollDirection: Axis.horizontal,
           child: Row(
             children: [
-              Padding(
-                padding: const EdgeInsets.only(right: 6),
-                child: ChoiceChip(
-                  label: const Text('Todos'),
-                  selected: !provider.onlyPending && provider.riskFilter == null,
-                  onSelected: (_) {
-                    provider.setRiskFilter(null);
-                    provider.setOnlyPending(false);
-                  },
-                ),
+              _CalmFilterChip(
+                label: 'Todos',
+                selected: allSelected,
+                onTap: () {
+                  provider.setRiskFilter(null);
+                  provider.setOnlyPending(false);
+                },
               ),
+              const SizedBox(width: 6),
               for (final level in const [
-                ('Alto', 'Alto riesgo'),
-                ('Medio', 'Moderado'),
-                ('Bajo', 'Bajo'),
-              ])
-                Padding(
-                  padding: const EdgeInsets.only(right: 6),
-                  child: ChoiceChip(
-                    label: Text(level.$2),
-                    selected: provider.riskFilter == level.$1,
-                    onSelected: (selected) =>
-                        provider.setRiskFilter(selected ? level.$1 : null),
+                ('Alto', 'Alto riesgo', AppColors.riskHigh),
+                ('Medio', 'Moderado', AppColors.riskMedium),
+                ('Bajo', 'Bajo', AppColors.riskLow),
+              ]) ...[
+                _CalmFilterChip(
+                  label: level.$2,
+                  selected: provider.riskFilter == level.$1,
+                  indicatorColor: level.$3,
+                  onTap: () => provider.setRiskFilter(
+                    provider.riskFilter == level.$1 ? null : level.$1,
                   ),
                 ),
-              FilterChip(
-                label: const Text('Pendientes'),
+                const SizedBox(width: 6),
+              ],
+              _CalmFilterChip(
+                label: 'Pendientes',
                 selected: provider.onlyPending,
-                onSelected: provider.setOnlyPending,
+                indicatorColor: provider.onlyPending
+                    ? AppColors.secondary
+                    : null,
+                onTap: () => provider.setOnlyPending(!provider.onlyPending),
               ),
             ],
           ),
@@ -214,18 +237,25 @@ class _HistoryPageState extends State<HistoryPage> {
   ) {
     final facilityCount = facilityProvider?.availableCount ?? 0;
     final lastUpdatedAt = facilityProvider?.lastUpdatedAt;
-    final color = syncProvider.hasError
+    final needsAttention = syncProvider.hasError || syncProvider.pendingCount > 0;
+    final statusColor = syncProvider.hasError
         ? AppColors.riskHigh
         : syncProvider.pendingCount > 0
         ? AppColors.secondary
-        : AppColors.riskLow;
+        : AppColors.textMuted;
 
     return Container(
-      padding: const EdgeInsets.all(14),
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
       decoration: BoxDecoration(
         color: AppColors.surface,
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: AppColors.border),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: syncProvider.hasError
+              ? AppColors.riskHigh.withValues(alpha: 0.35)
+              : syncProvider.pendingCount > 0
+              ? AppColors.secondary.withValues(alpha: 0.35)
+              : AppColors.border,
+        ),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -238,8 +268,8 @@ class _HistoryPageState extends State<HistoryPage> {
                     : syncProvider.pendingCount > 0
                     ? Icons.cloud_upload_outlined
                     : Icons.cloud_done_outlined,
-                size: 20,
-                color: color,
+                size: 18,
+                color: statusColor,
               ),
               const SizedBox(width: 10),
               Expanded(
@@ -249,38 +279,92 @@ class _HistoryPageState extends State<HistoryPage> {
                     Text(
                       '$recordCount evaluaciones en este dispositivo',
                       style: const TextStyle(
-                        fontWeight: FontWeight.w700,
+                        fontWeight: FontWeight.w600,
                         fontSize: 13,
+                        color: AppColors.textPrimary,
                       ),
                     ),
-                    if (syncProvider.pendingCount > 0)
+                    if (syncProvider.pendingCount > 0) ...[
+                      const SizedBox(height: 2),
                       Text(
                         'Hay ${syncProvider.pendingCount} registros sin sincronizar. No desinstale la app hasta que se sincronicen.',
-                        style: TextStyle(fontSize: 11, color: color),
+                        style: const TextStyle(
+                          fontSize: 11.5,
+                          color: AppColors.secondary,
+                        ),
                       ),
+                    ],
                   ],
                 ),
               ),
-              FilledButton.tonal(
-                onPressed: syncProvider.isSyncing
-                    ? null
-                    : () async {
-                        await syncProvider.syncNow();
-                        if (context.mounted) {
-                          await context.read<HistoryProvider>().loadHistory();
-                        }
-                      },
-                child: Text(
-                  syncProvider.isSyncing ? 'Sincronizando' : 'Sincronizar',
+              const SizedBox(width: 8),
+              if (needsAttention)
+                FilledButton.tonal(
+                  style: FilledButton.styleFrom(
+                    visualDensity: VisualDensity.compact,
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 8,
+                    ),
+                    textStyle: const TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  onPressed: syncProvider.isSyncing
+                      ? null
+                      : () async {
+                          await syncProvider.syncNow();
+                          if (context.mounted) {
+                            await context.read<HistoryProvider>().loadHistory();
+                          }
+                        },
+                  child: Text(
+                    syncProvider.isSyncing ? 'Sincronizando' : 'Sincronizar',
+                  ),
+                )
+              else
+                TextButton(
+                  style: TextButton.styleFrom(
+                    visualDensity: VisualDensity.compact,
+                    foregroundColor: AppColors.textSecondary,
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 10,
+                      vertical: 6,
+                    ),
+                    textStyle: const TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  onPressed: syncProvider.isSyncing
+                      ? null
+                      : () async {
+                          await syncProvider.syncNow();
+                          if (context.mounted) {
+                            await context.read<HistoryProvider>().loadHistory();
+                          }
+                        },
+                  child: Text(
+                    syncProvider.isSyncing ? 'Sincronizando' : 'Sincronizar',
+                  ),
                 ),
-              ),
             ],
           ),
           if (syncProvider.lastMessage case final message?) ...[
             const SizedBox(height: 6),
-            Text(message, style: TextStyle(fontSize: 11, color: color)),
+            Text(
+              message,
+              style: TextStyle(
+                fontSize: 11.5,
+                color: needsAttention ? statusColor : AppColors.textSecondary,
+              ),
+            ),
           ],
-          const Divider(height: 18),
+          const Padding(
+            padding: EdgeInsets.symmetric(vertical: 8),
+            child: Divider(height: 1, thickness: 1, color: AppColors.border),
+          ),
           Row(
             children: [
               Expanded(
@@ -289,8 +373,8 @@ class _HistoryPageState extends State<HistoryPage> {
                   '${lastUpdatedAt == null ? 'sin actualizar' : DateFormat('dd/MM/yyyy HH:mm').format(lastUpdatedAt.toLocal())}'
                   '${facilityProvider?.isSyncing == true ? ' · actualizando' : ''}',
                   style: const TextStyle(
-                    fontSize: 11,
-                    color: AppColors.textSecondary,
+                    fontSize: 11.5,
+                    color: AppColors.textMuted,
                   ),
                 ),
               ),
@@ -306,7 +390,11 @@ class _HistoryPageState extends State<HistoryPage> {
                   onPressed: facilityProvider.isSyncing
                       ? null
                       : facilityProvider.sync,
-                  icon: const Icon(Icons.refresh_rounded, size: 16),
+                  icon: const Icon(
+                    Icons.refresh_rounded,
+                    size: 15,
+                    color: AppColors.textMuted,
+                  ),
                 ),
             ],
           ),
@@ -334,7 +422,8 @@ class _HistoryPageState extends State<HistoryPage> {
     final result = record.result;
     final riesgo = result.riskLabel;
     final hasEmergency = result.hasImmediateEmergency;
-    final (badgeColor, badgeBg) = _riskBadgeColors(
+    final isHighPriority = hasEmergency || riesgo.contains('Alto');
+    final (badgeFg, badgeBg, badgeBorder) = _riskBadgeStyle(
       riesgo,
       hasEmergency: hasEmergency,
     );
@@ -342,7 +431,7 @@ class _HistoryPageState extends State<HistoryPage> {
     final patientName = patient.nombrePaciente?.trim() ?? '';
     final syncColor = switch (record.syncStatus) {
       SyncStatus.pending => AppColors.secondary,
-      SyncStatus.synced => AppColors.riskLow,
+      SyncStatus.synced => AppColors.textMuted,
       SyncStatus.error => AppColors.riskHigh,
     };
     final syncLabel = switch (record.syncStatus) {
@@ -350,157 +439,224 @@ class _HistoryPageState extends State<HistoryPage> {
       SyncStatus.synced => 'Sincronizado',
       SyncStatus.error => 'Error',
     };
+    final bpTone = _bloodPressureTone(
+      patient.presionSistolica,
+      patient.presionDiastolica,
+    );
+    final hbTone = _hemoglobinTone(patient.hemoglobina);
 
-    return Card(
+    return Container(
       margin: const EdgeInsets.only(bottom: 10),
-      child: InkWell(
-        borderRadius: BorderRadius.circular(16),
-        onTap: () => _showRecordDetails(record, provider),
-        child: Padding(
-          padding: const EdgeInsets.all(14),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: AppColors.border),
+      ),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(13),
+        child: Material(
+          color: Colors.transparent,
+          child: InkWell(
+            onTap: () => _showRecordDetails(record, provider),
+            child: IntrinsicHeight(
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  const Icon(
-                    Icons.person_outline_rounded,
-                    color: AppColors.primary,
-                    size: 18,
-                  ),
-                  const SizedBox(width: 6),
+                  if (isHighPriority)
+                    Container(width: 3.5, color: badgeFg),
                   Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          patientName.isNotEmpty
-                              ? patientName
-                              : patient.patientId,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(
-                            fontWeight: FontWeight.w700,
-                            fontSize: 14,
+                    child: Padding(
+                      padding: const EdgeInsets.fromLTRB(14, 13, 14, 12),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      patientName.isNotEmpty
+                                          ? patientName
+                                          : patient.patientId,
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: const TextStyle(
+                                        fontWeight: FontWeight.w700,
+                                        fontSize: 15,
+                                        color: AppColors.textPrimary,
+                                        letterSpacing: -0.1,
+                                      ),
+                                    ),
+                                    if (patientName.isNotEmpty) ...[
+                                      const SizedBox(height: 1),
+                                      Text(
+                                        'ID: ${patient.patientId}',
+                                        style: const TextStyle(
+                                          fontSize: 11.5,
+                                          color: AppColors.textMuted,
+                                          fontWeight: FontWeight.w500,
+                                        ),
+                                      ),
+                                    ],
+                                  ],
+                                ),
+                              ),
+                              const SizedBox(width: 10),
+                              ConstrainedBox(
+                                constraints: const BoxConstraints(
+                                  maxWidth: 165,
+                                ),
+                                child: _RiskPill(
+                                  label: hasEmergency ? 'CÓDIGO ROJO' : riesgo,
+                                  foreground: badgeFg,
+                                  background: badgeBg,
+                                  borderColor: badgeBorder,
+                                ),
+                              ),
+                            ],
                           ),
-                        ),
-                        if (patientName.isNotEmpty)
+                          const SizedBox(height: 8),
                           Text(
-                            'ID: ${patient.patientId}',
+                            '${patient.municipio} · ${patient.etnia}',
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
                             style: const TextStyle(
-                              fontSize: 11,
-                              color: AppColors.textMuted,
-                              fontWeight: FontWeight.w600,
+                              fontSize: 12.5,
+                              color: AppColors.textSecondary,
                             ),
                           ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 8,
-                      vertical: 3,
-                    ),
-                    decoration: BoxDecoration(
-                      color: badgeBg,
-                      borderRadius: BorderRadius.circular(6),
-                    ),
-                    child: Text(
-                      hasEmergency ? 'CÓDIGO ROJO' : riesgo,
-                      style: TextStyle(
-                        fontSize: 11,
-                        fontWeight: FontWeight.w700,
-                        color: badgeColor,
+                          const SizedBox(height: 6),
+                          Wrap(
+                            spacing: 10,
+                            runSpacing: 4,
+                            crossAxisAlignment: WrapCrossAlignment.center,
+                            children: [
+                              _InlineMetric(
+                                label: 'PA',
+                                value:
+                                    '${patient.presionSistolica.toInt()}/${patient.presionDiastolica.toInt()}',
+                                emphasisColor: bpTone,
+                              ),
+                              _InlineMetric(
+                                label: 'Hb',
+                                value: '${patient.hemoglobina}',
+                                emphasisColor: hbTone,
+                              ),
+                              _InlineMetric(
+                                label: 'Sem',
+                                value: '${patient.semanasGestacion}',
+                              ),
+                              _InlineMetric(
+                                label: 'Dist',
+                                value: '${patient.distanciaKm} km',
+                              ),
+                            ],
+                          ),
+                          if (result.clinicalAlerts.isNotEmpty) ...[
+                            const SizedBox(height: 8),
+                            Row(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                const Padding(
+                                  padding: EdgeInsets.only(top: 1),
+                                  child: Icon(
+                                    Icons.warning_amber_rounded,
+                                    size: 14,
+                                    color: AppColors.emergencyRed,
+                                  ),
+                                ),
+                                const SizedBox(width: 5),
+                                Expanded(
+                                  child: Text(
+                                    'Alerta: ${result.clinicalAlerts.map((alert) => alert.title).join(' | ')}',
+                                    style: const TextStyle(
+                                      fontSize: 11.5,
+                                      color: AppColors.emergencyRed,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                    maxLines: 2,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ],
+                          const SizedBox(height: 10),
+                          const Divider(
+                            height: 1,
+                            thickness: 1,
+                            color: AppColors.border,
+                          ),
+                          const SizedBox(height: 8),
+                          SizedBox(
+                            width: double.infinity,
+                            child: Wrap(
+                              spacing: 8,
+                              runSpacing: 6,
+                              alignment: WrapAlignment.spaceBetween,
+                              crossAxisAlignment: WrapCrossAlignment.center,
+                              children: [
+                                if (record.consultationCode case final code?
+                                    when code.trim().isNotEmpty)
+                                  ConsultationCodeBadge(code: code)
+                                else
+                                  const SizedBox.shrink(),
+                                Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Icon(
+                                      switch (record.syncStatus) {
+                                        SyncStatus.pending =>
+                                          Icons.schedule_rounded,
+                                        SyncStatus.synced =>
+                                          Icons.cloud_done_outlined,
+                                        SyncStatus.error =>
+                                          Icons.error_outline_rounded,
+                                      },
+                                      size: 13,
+                                      color: syncColor,
+                                    ),
+                                    const SizedBox(width: 4),
+                                    Text(
+                                      '$syncLabel · $fecha',
+                                      style: TextStyle(
+                                        fontSize: 11,
+                                        fontWeight:
+                                            record.syncStatus ==
+                                                SyncStatus.synced
+                                            ? FontWeight.w500
+                                            : FontWeight.w600,
+                                        color: syncColor,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ],
+                            ),
+                          ),
+                          if (record.syncStatus == SyncStatus.error &&
+                              record.lastSyncError != null) ...[
+                            const SizedBox(height: 4),
+                            Text(
+                              'Error: ${record.lastSyncError}',
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(
+                                fontSize: 11,
+                                color: AppColors.riskHigh,
+                              ),
+                            ),
+                          ],
+                        ],
                       ),
                     ),
                   ),
                 ],
               ),
-              const SizedBox(height: 8),
-              Row(
-                children: [
-                  Expanded(
-                    child: Text(
-                      '${patient.etnia} • ${patient.municipio}',
-                      style: const TextStyle(
-                        fontSize: 12,
-                        color: AppColors.textSecondary,
-                      ),
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  Icon(
-                    switch (record.syncStatus) {
-                      SyncStatus.pending => Icons.schedule_rounded,
-                      SyncStatus.synced => Icons.cloud_done_rounded,
-                      SyncStatus.error => Icons.error_outline_rounded,
-                    },
-                    size: 13,
-                    color: syncColor,
-                  ),
-                  const SizedBox(width: 4),
-                  Text(
-                    '$syncLabel · $fecha',
-                    style: TextStyle(
-                      fontSize: 11,
-                      fontWeight: FontWeight.w600,
-                      color: syncColor,
-                    ),
-                  ),
-                ],
-              ),
-              if (record.syncStatus == SyncStatus.error &&
-                  record.lastSyncError != null) ...[
-                const SizedBox(height: 4),
-                Text(
-                  'Error: ${record.lastSyncError}',
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                    fontSize: 11,
-                    color: AppColors.riskHigh,
-                  ),
-                ),
-              ],
-              if (record.consultationCode case final code?
-                  when code.trim().isNotEmpty) ...[
-                const SizedBox(height: 6),
-                Align(
-                  alignment: Alignment.centerLeft,
-                  child: ConsultationCodeBadge(code: code),
-                ),
-              ],
-              const SizedBox(height: 8),
-              Wrap(
-                spacing: 6,
-                runSpacing: 6,
-                children: [
-                  _buildMetricPill(
-                    'PA',
-                    '${patient.presionSistolica.toInt()}/${patient.presionDiastolica.toInt()}',
-                  ),
-                  _buildMetricPill('Hb', '${patient.hemoglobina} g/dL'),
-                  _buildMetricPill('Sem', '${patient.semanasGestacion} sem'),
-                  _buildMetricPill('Dist', '${patient.distanciaKm} km'),
-                ],
-              ),
-              if (result.clinicalAlerts.isNotEmpty) ...[
-                const SizedBox(height: 8),
-                Text(
-                  'Alerta: ${result.clinicalAlerts.map((alert) => alert.title).join(' | ')}',
-                  style: const TextStyle(
-                    fontSize: 11,
-                    color: AppColors.emergencyRed,
-                    fontWeight: FontWeight.w600,
-                  ),
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ],
-            ],
+            ),
           ),
         ),
       ),
@@ -512,7 +668,7 @@ class _HistoryPageState extends State<HistoryPage> {
     final result = record.result;
     final riesgo = result.riskLabel;
     final hasEmergency = result.hasImmediateEmergency;
-    final (badgeColor, badgeBg) = _riskBadgeColors(
+    final (badgeFg, badgeBg, badgeBorder) = _riskBadgeStyle(
       riesgo,
       hasEmergency: hasEmergency,
     );
@@ -520,134 +676,113 @@ class _HistoryPageState extends State<HistoryPage> {
       'dd/MM/yyyy HH:mm',
     ).format(record.fechaGuardado.toLocal());
     final hasFacilities = context.read<NearestFacilitiesProvider?>() != null;
+    final patientName = patient.nombrePaciente?.trim() ?? '';
+    final bpTone = _bloodPressureTone(
+      patient.presionSistolica,
+      patient.presionDiastolica,
+    );
+    final hbTone = _hemoglobinTone(patient.hemoglobina);
+    final bmiTone = _bmiTone(patient.imc);
+    final syncLabel = switch (record.syncStatus) {
+      SyncStatus.pending => 'Pendiente de sincronización',
+      SyncStatus.synced => 'Sincronizado',
+      SyncStatus.error => 'Error de sincronización',
+    };
 
     showModalBottomSheet<void>(
       context: context,
       isScrollControlled: true,
+      backgroundColor: AppColors.surface,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
       builder: (sheetContext) => SafeArea(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.all(20),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
+        child: DraggableScrollableSheet(
+          expand: false,
+          initialChildSize: 0.85,
+          maxChildSize: 0.95,
+          minChildSize: 0.5,
+          builder: (sheetContext, controller) => ListView(
+            controller: controller,
+            padding: const EdgeInsets.fromLTRB(20, 12, 20, 24),
             children: [
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Expanded(
-                    child: Text(
-                      patient.nombrePaciente?.trim().isNotEmpty == true
-                          ? '${patient.nombrePaciente} · ${patient.patientId}'
-                          : 'Detalle · ${patient.patientId}',
-                      style: Theme.of(sheetContext).textTheme.titleLarge,
-                    ),
+              Center(
+                child: Container(
+                  width: 36,
+                  height: 4,
+                  margin: const EdgeInsets.only(bottom: 16),
+                  decoration: BoxDecoration(
+                    color: AppColors.border,
+                    borderRadius: BorderRadius.circular(2),
                   ),
-                  const SizedBox(width: 8),
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 10,
-                      vertical: 4,
-                    ),
-                    decoration: BoxDecoration(
-                      color: badgeBg,
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: Text(
-                      hasEmergency ? 'CÓDIGO ROJO' : riesgo,
-                      style: TextStyle(
-                        fontSize: 12,
-                        fontWeight: FontWeight.w700,
-                        color: badgeColor,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 10),
-              Text(
-                '${patient.etnia} • ${patient.municipio}, ${patient.departamento}',
-                style: const TextStyle(
-                  fontSize: 13,
-                  color: AppColors.textSecondary,
-                  fontWeight: FontWeight.w600,
                 ),
               ),
-              const SizedBox(height: 4),
-              Text(
-                'Fecha: $fecha · ${patient.zona} · ${patient.afiliacionSgsss}',
-                style: const TextStyle(
-                  fontSize: 12,
-                  color: AppColors.textSecondary,
-                ),
-              ),
-              if (patient.direccionPaciente case final address?) ...[
-                const SizedBox(height: 6),
-                Text('Dirección: $address', style: const TextStyle(fontSize: 13)),
-              ],
-              if (patient.latitud != null && patient.longitud != null) ...[
-                const SizedBox(height: 4),
-                Text(
-                  'Ubicación: ${patient.latitud!.toStringAsFixed(5)}, '
-                  '${patient.longitud!.toStringAsFixed(5)}'
-                  '${patient.precisionGpsM == null ? '' : ' · precisión ${patient.precisionGpsM!.toStringAsFixed(1)} m'}',
-                  style: const TextStyle(fontSize: 12),
-                ),
-              ],
-              if (hasFacilities) ...[
-                const SizedBox(height: 10),
-                OutlinedButton.icon(
-                  onPressed: () => _showNearbyFacilities(record),
-                  icon: const Icon(Icons.local_hospital_outlined),
-                  label: const Text('Centros cercanos'),
-                ),
-              ],
-              const SizedBox(height: 12),
-              Wrap(
-                spacing: 6,
-                runSpacing: 6,
-                children: [
-                  _buildMetricPill('Edad', '${patient.edadMaterna} años'),
-                  _buildMetricPill('Controles', '${patient.numeroControles}'),
-                  _buildMetricPill(
-                    'PA',
-                    '${patient.presionSistolica.toInt()}/${patient.presionDiastolica.toInt()} mmHg',
-                  ),
-                  _buildMetricPill('Hb', '${patient.hemoglobina} g/dL'),
-                  _buildMetricPill('IMC', '${patient.imc}'),
-                  _buildMetricPill('Sem', '${patient.semanasGestacion} sem'),
-                  _buildMetricPill('Dist', '${patient.distanciaKm} km'),
-                  _buildMetricPill(
-                    'Traslado',
-                    '${patient.tiempoTrasladoHoras} h',
-                  ),
-                ],
-              ),
-              const SizedBox(height: 12),
+              // Hero Risk Summary
               Container(
-                padding: const EdgeInsets.all(12),
+                padding: const EdgeInsets.all(16),
                 decoration: BoxDecoration(
-                  color: AppColors.surfaceVariant.withValues(alpha: 0.5),
-                  borderRadius: BorderRadius.circular(10),
-                  border: Border.all(color: AppColors.border),
+                  color: badgeBg,
+                  borderRadius: BorderRadius.circular(14),
+                  border: Border.all(color: badgeBorder),
                 ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text(
-                      'Estimación del modelo de IA',
-                      style: TextStyle(
-                        fontSize: 12,
-                        fontWeight: FontWeight.w700,
+                    SizedBox(
+                      width: double.infinity,
+                      child: Wrap(
+                        spacing: 8,
+                        runSpacing: 6,
+                        alignment: WrapAlignment.spaceBetween,
+                        crossAxisAlignment: WrapCrossAlignment.center,
+                        children: [
+                          _RiskPill(
+                            label: hasEmergency ? 'CÓDIGO ROJO' : riesgo,
+                            foreground: badgeFg,
+                            background: AppColors.surface,
+                            borderColor: badgeBorder,
+                          ),
+                          Text(
+                            fecha,
+                            style: const TextStyle(
+                              fontSize: 11.5,
+                              color: AppColors.textSecondary,
+                              fontFeatures: [FontFeature.tabularFigures()],
+                            ),
+                          ),
+                        ],
                       ),
                     ),
-                    const SizedBox(height: 4),
+                    const SizedBox(height: 10),
                     Text(
-                      'Riesgo alto: ${(result.probAlto * 100).toStringAsFixed(1)}%'
-                      '${(result.probMedio > 0 || result.probBajo > 0) ? ' · Moderado: ${(result.probMedio * 100).toStringAsFixed(1)}% · Bajo: ${(result.probBajo * 100).toStringAsFixed(1)}%' : ''}',
-                      style: const TextStyle(fontSize: 12),
+                      patientName.isNotEmpty
+                          ? patientName
+                          : 'Detalle · ${patient.patientId}',
+                      style: const TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.w700,
+                        color: AppColors.textPrimary,
+                        letterSpacing: -0.2,
+                      ),
                     ),
+                    if (patientName.isNotEmpty) ...[
+                      const SizedBox(height: 2),
+                      Text(
+                        'ID: ${patient.patientId}',
+                        style: const TextStyle(
+                          fontSize: 12.5,
+                          color: AppColors.textSecondary,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ],
+                    const SizedBox(height: 6),
                     Text(
-                      'Desenlace adverso: ${(result.probDesenlaceAdverso * 100).toStringAsFixed(1)}%',
-                      style: const TextStyle(fontSize: 12),
+                      '${patient.etnia} · ${patient.municipio}, ${patient.departamento}',
+                      style: const TextStyle(
+                        fontSize: 12.5,
+                        color: AppColors.textSecondary,
+                      ),
                     ),
                   ],
                 ),
@@ -655,22 +790,180 @@ class _HistoryPageState extends State<HistoryPage> {
               if (result.clinicalAlerts.isNotEmpty) ...[
                 const SizedBox(height: 12),
                 Container(
-                  padding: const EdgeInsets.all(10),
+                  padding: const EdgeInsets.all(12),
                   decoration: BoxDecoration(
-                    color: const Color(0xFFFEE2E2),
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: Text(
-                    'Alerta: ${result.clinicalAlerts.map((alert) => alert.title).join(' | ')}',
-                    style: const TextStyle(
-                      fontSize: 12,
-                      color: AppColors.emergencyRed,
-                      fontWeight: FontWeight.w600,
+                    color: const Color(0xFFFEF2F2),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(
+                      color: AppColors.emergencyRed.withValues(alpha: 0.32),
                     ),
+                  ),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Padding(
+                        padding: EdgeInsets.only(top: 1),
+                        child: Icon(
+                          Icons.warning_amber_rounded,
+                          size: 18,
+                          color: AppColors.emergencyRed,
+                        ),
+                      ),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: Text(
+                          'Alerta: ${result.clinicalAlerts.map((alert) => alert.title).join(' | ')}',
+                          style: const TextStyle(
+                            fontSize: 12.5,
+                            height: 1.35,
+                            color: AppColors.emergencyRed,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
                 ),
               ],
-              const SizedBox(height: 12),
+              const SizedBox(height: 20),
+              const _SheetSectionTitle('Signos vitales y datos clínicos'),
+              const SizedBox(height: 10),
+              _TwoColumnMetricGrid(
+                items: [
+                  _GridMetricItem(
+                    label: 'Presión arterial',
+                    value:
+                        '${patient.presionSistolica.toInt()}/${patient.presionDiastolica.toInt()} mmHg',
+                    emphasisColor: bpTone,
+                  ),
+                  _GridMetricItem(
+                    label: 'Hemoglobina',
+                    value: '${patient.hemoglobina} g/dL',
+                    emphasisColor: hbTone,
+                  ),
+                  _GridMetricItem(
+                    label: 'Edad materna',
+                    value: '${patient.edadMaterna} años',
+                  ),
+                  _GridMetricItem(
+                    label: 'Semanas',
+                    value: '${patient.semanasGestacion} sem',
+                  ),
+                  _GridMetricItem(
+                    label: 'IMC',
+                    value: '${patient.imc} kg/m²',
+                    emphasisColor: bmiTone,
+                  ),
+                  _GridMetricItem(
+                    label: 'Controles',
+                    value: '${patient.numeroControles}',
+                  ),
+                  _GridMetricItem(
+                    label: 'Distancia',
+                    value: '${patient.distanciaKm} km',
+                  ),
+                  _GridMetricItem(
+                    label: 'Traslado',
+                    value: '${patient.tiempoTrasladoHoras} h',
+                  ),
+                ],
+              ),
+              const SizedBox(height: 14),
+              _KeyValueRow(
+                label: 'Antec. preeclampsia',
+                value: patient.antecedentePreeclampsia ? 'Sí' : 'No',
+                emphasisColor: patient.antecedentePreeclampsia
+                    ? AppColors.secondary
+                    : null,
+              ),
+              _KeyValueRow(
+                label: 'Antec. diabetes',
+                value: patient.antecedenteDiabetes ? 'Sí' : 'No',
+                emphasisColor: patient.antecedenteDiabetes
+                    ? AppColors.secondary
+                    : null,
+              ),
+              _KeyValueRow(
+                label: 'Parto institucional previo',
+                value: patient.partoInstitucionalPrevio ? 'Sí' : 'No',
+              ),
+              const Padding(
+                padding: EdgeInsets.symmetric(vertical: 16),
+                child: Divider(height: 1, thickness: 1, color: AppColors.border),
+              ),
+              const _SheetSectionTitle('Estimación del modelo de IA'),
+              const SizedBox(height: 10),
+              _AiProbabilityBar(
+                label: 'Riesgo alto',
+                probability: result.probAlto,
+                threshold: ClinicalThresholds.aiRiskHighThreshold,
+                accentColor: AppColors.riskHigh,
+              ),
+              if (result.probMedio > 0 || result.probBajo > 0) ...[
+                const SizedBox(height: 10),
+                _AiProbabilityBar(
+                  label: 'Riesgo moderado',
+                  probability: result.probMedio,
+                  threshold: 1.1,
+                  accentColor: AppColors.riskMedium,
+                ),
+                const SizedBox(height: 10),
+                _AiProbabilityBar(
+                  label: 'Riesgo bajo',
+                  probability: result.probBajo,
+                  threshold: 1.1,
+                  accentColor: AppColors.riskLow,
+                ),
+              ],
+              const SizedBox(height: 10),
+              _AiProbabilityBar(
+                label: 'Desenlace adverso',
+                probability: result.probDesenlaceAdverso,
+                threshold: ClinicalThresholds.aiAdverseOutcomeThreshold,
+                accentColor: AppColors.secondary,
+              ),
+              const Padding(
+                padding: EdgeInsets.symmetric(vertical: 16),
+                child: Divider(height: 1, thickness: 1, color: AppColors.border),
+              ),
+              const _SheetSectionTitle('Identificación y territorio'),
+              const SizedBox(height: 8),
+              _KeyValueRow(label: 'Zona', value: patient.zona),
+              _KeyValueRow(
+                label: 'Régimen SGSSS',
+                value: patient.afiliacionSgsss,
+              ),
+              if (patient.direccionPaciente case final address?)
+                _KeyValueRow(label: 'Dirección', value: address),
+              if (patient.latitud != null && patient.longitud != null)
+                _KeyValueRow(
+                  label: 'Ubicación GPS',
+                  value:
+                      '${patient.latitud!.toStringAsFixed(5)}, '
+                      '${patient.longitud!.toStringAsFixed(5)}'
+                      '${patient.precisionGpsM == null ? '' : ' (±${patient.precisionGpsM!.toStringAsFixed(1)} m)'}',
+                ),
+              _KeyValueRow(label: 'Sincronización', value: syncLabel),
+              if (hasFacilities) ...[
+                const SizedBox(height: 12),
+                OutlinedButton.icon(
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: AppColors.primary,
+                    side: const BorderSide(color: AppColors.border),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                  ),
+                  onPressed: () => _showNearbyFacilities(record),
+                  icon: const Icon(Icons.local_hospital_outlined, size: 18),
+                  label: const Text('Centros cercanos'),
+                ),
+              ],
+              const Padding(
+                padding: EdgeInsets.symmetric(vertical: 16),
+                child: Divider(height: 1, thickness: 1, color: AppColors.border),
+              ),
               ConsultationCodeCard(
                 code: (record.consultationCode?.trim().isNotEmpty ?? false)
                     ? record.consultationCode
@@ -683,19 +976,27 @@ class _HistoryPageState extends State<HistoryPage> {
               ),
               if (provider.updateAssessment != null ||
                   provider.deleteAssessment != null) ...[
-                const SizedBox(height: 14),
+                const SizedBox(height: 16),
                 Row(
                   children: [
                     if (provider.updateAssessment != null)
                       Expanded(
                         child: OutlinedButton.icon(
+                          style: OutlinedButton.styleFrom(
+                            foregroundColor: AppColors.textPrimary,
+                            side: const BorderSide(color: AppColors.border),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            padding: const EdgeInsets.symmetric(vertical: 12),
+                          ),
                           onPressed: provider.isMutating
                               ? null
                               : () {
                                   Navigator.pop(sheetContext);
                                   _showEditDialog(context, provider, record);
                                 },
-                          icon: const Icon(Icons.edit_outlined, size: 18),
+                          icon: const Icon(Icons.edit_outlined, size: 17),
                           label: const Text('Editar'),
                         ),
                       ),
@@ -707,7 +1008,13 @@ class _HistoryPageState extends State<HistoryPage> {
                         child: OutlinedButton.icon(
                           style: OutlinedButton.styleFrom(
                             foregroundColor: AppColors.riskHigh,
-                            side: const BorderSide(color: AppColors.riskHigh),
+                            side: BorderSide(
+                              color: AppColors.riskHigh.withValues(alpha: 0.4),
+                            ),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            padding: const EdgeInsets.symmetric(vertical: 12),
                           ),
                           onPressed: provider.isMutating
                               ? null
@@ -717,7 +1024,7 @@ class _HistoryPageState extends State<HistoryPage> {
                                   provider,
                                   record,
                                 ),
-                          icon: const Icon(Icons.delete_outline, size: 18),
+                          icon: const Icon(Icons.delete_outline, size: 17),
                           label: const Text('Eliminar'),
                         ),
                       ),
@@ -1364,34 +1671,438 @@ class _HistoryPageState extends State<HistoryPage> {
     );
   }
 
-  (Color, Color) _riskBadgeColors(String riesgo, {required bool hasEmergency}) {
+  (Color, Color, Color) _riskBadgeStyle(
+    String riesgo, {
+    required bool hasEmergency,
+  }) {
     if (hasEmergency) {
-      return (AppColors.emergencyRed, const Color(0xFFFEE2E2));
+      return (
+        AppColors.emergencyRed,
+        const Color(0xFFFEF2F2),
+        AppColors.emergencyRed.withValues(alpha: 0.30),
+      );
     }
     if (riesgo.contains('Alto')) {
-      return (AppColors.riskHigh, const Color(0xFFFEE2E2));
+      return (
+        AppColors.riskHigh,
+        const Color(0xFFFEF2F2),
+        AppColors.riskHigh.withValues(alpha: 0.28),
+      );
     }
     if (riesgo.contains('Medio') || riesgo.contains('Moderado')) {
-      return (AppColors.riskMedium, const Color(0xFFFEF3C7));
+      return (
+        const Color(0xFFB45309),
+        const Color(0xFFFFFBEB),
+        AppColors.riskMedium.withValues(alpha: 0.32),
+      );
     }
-    return (AppColors.riskLow, const Color(0xFFDCFCE7));
+    return (
+      const Color(0xFF047857),
+      const Color(0xFFF0FDF4),
+      AppColors.riskLow.withValues(alpha: 0.25),
+    );
   }
 
-  Widget _buildMetricPill(String title, String val) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
-      decoration: BoxDecoration(
-        color: const Color(0xFFF1F5F9),
-        borderRadius: BorderRadius.circular(6),
+  Color? _bloodPressureTone(double systolic, double diastolic) {
+    if (systolic >= ClinicalThresholds.severeSystolicCrisis ||
+        diastolic >= ClinicalThresholds.severeDiastolicCrisis) {
+      return AppColors.emergencyRed;
+    }
+    if (systolic >= ClinicalThresholds.moderateSystolicCrisis ||
+        diastolic >= ClinicalThresholds.moderateDiastolicCrisis) {
+      return AppColors.secondary;
+    }
+    return null;
+  }
+
+  Color? _hemoglobinTone(double hemoglobin) {
+    if (hemoglobin <= 0) return null;
+    if (hemoglobin < ClinicalThresholds.severeAnemia) {
+      return AppColors.emergencyRed;
+    }
+    if (hemoglobin < ClinicalThresholds.mildAnemia) {
+      return AppColors.secondary;
+    }
+    return null;
+  }
+
+  Color? _bmiTone(double bmi) {
+    if (bmi <= 0) return null;
+    if (bmi < 18.5 || bmi >= 30.0) return AppColors.secondary;
+    return null;
+  }
+}
+
+class _CalmFilterChip extends StatelessWidget {
+  final String label;
+  final bool selected;
+  final Color? indicatorColor;
+  final VoidCallback onTap;
+
+  const _CalmFilterChip({
+    required this.label,
+    required this.selected,
+    required this.onTap,
+    this.indicatorColor,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final bgColor = selected
+        ? AppColors.primary.withValues(alpha: 0.09)
+        : AppColors.surface;
+    final borderColor = selected ? AppColors.primary : AppColors.border;
+    final textColor = selected
+        ? AppColors.primaryDark
+        : AppColors.textSecondary;
+
+    return Material(
+      color: bgColor,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(20),
+        side: BorderSide(color: borderColor),
       ),
-      child: Text(
-        '$title: $val',
-        style: const TextStyle(
-          fontSize: 11,
-          fontWeight: FontWeight.w600,
-          color: AppColors.textPrimary,
+      child: InkWell(
+        borderRadius: BorderRadius.circular(20),
+        onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              if (indicatorColor != null) ...[
+                Container(
+                  width: 6,
+                  height: 6,
+                  decoration: BoxDecoration(
+                    color: indicatorColor,
+                    shape: BoxShape.circle,
+                  ),
+                ),
+                const SizedBox(width: 6),
+              ],
+              Text(
+                label,
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
+                  color: textColor,
+                ),
+              ),
+            ],
+          ),
         ),
       ),
+    );
+  }
+}
+
+class _RiskPill extends StatelessWidget {
+  final String label;
+  final Color foreground;
+  final Color background;
+  final Color borderColor;
+
+  const _RiskPill({
+    required this.label,
+    required this.foreground,
+    required this.background,
+    required this.borderColor,
+  });
+
+  @override
+  Widget build(BuildContext context) => Container(
+    padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 3.5),
+    decoration: BoxDecoration(
+      color: background,
+      borderRadius: BorderRadius.circular(6),
+      border: Border.all(color: borderColor),
+    ),
+    child: Text(
+      label,
+      maxLines: 1,
+      overflow: TextOverflow.ellipsis,
+      style: TextStyle(
+        fontSize: 11,
+        fontWeight: FontWeight.w700,
+        color: foreground,
+      ),
+    ),
+  );
+}
+
+class _InlineMetric extends StatelessWidget {
+  final String label;
+  final String value;
+  final Color? emphasisColor;
+
+  const _InlineMetric({
+    required this.label,
+    required this.value,
+    this.emphasisColor,
+  });
+
+  @override
+  Widget build(BuildContext context) => Row(
+    mainAxisSize: MainAxisSize.min,
+    children: [
+      Text(
+        '$label ',
+        style: const TextStyle(
+          fontSize: 11.5,
+          color: AppColors.textMuted,
+          fontWeight: FontWeight.w500,
+        ),
+      ),
+      Text(
+        value,
+        style: TextStyle(
+          fontSize: 12,
+          fontWeight: FontWeight.w600,
+          color: emphasisColor ?? AppColors.textPrimary,
+          fontFeatures: const [FontFeature.tabularFigures()],
+        ),
+      ),
+    ],
+  );
+}
+
+class _SheetSectionTitle extends StatelessWidget {
+  final String text;
+
+  const _SheetSectionTitle(this.text);
+
+  @override
+  Widget build(BuildContext context) => Text(
+    text,
+    style: const TextStyle(
+      fontSize: 12.5,
+      fontWeight: FontWeight.w700,
+      color: AppColors.textSecondary,
+      letterSpacing: 0.2,
+    ),
+  );
+}
+
+class _GridMetricItem {
+  final String label;
+  final String value;
+  final Color? emphasisColor;
+
+  const _GridMetricItem({
+    required this.label,
+    required this.value,
+    this.emphasisColor,
+  });
+}
+
+class _TwoColumnMetricGrid extends StatelessWidget {
+  final List<_GridMetricItem> items;
+
+  const _TwoColumnMetricGrid({required this.items});
+
+  @override
+  Widget build(BuildContext context) {
+    final rows = <Widget>[];
+    for (var i = 0; i < items.length; i += 2) {
+      final left = items[i];
+      final right = i + 1 < items.length ? items[i + 1] : null;
+      if (i > 0) {
+        rows.add(
+          const Divider(height: 1, thickness: 1, color: AppColors.border),
+        );
+      }
+      rows.add(
+        IntrinsicHeight(
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Expanded(child: _MetricCell(item: left)),
+              const VerticalDivider(
+                width: 1,
+                thickness: 1,
+                color: AppColors.border,
+              ),
+              Expanded(
+                child: right != null
+                    ? _MetricCell(item: right)
+                    : const SizedBox.shrink(),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
+    return Container(
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: AppColors.border),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: rows,
+      ),
+    );
+  }
+}
+
+class _MetricCell extends StatelessWidget {
+  final _GridMetricItem item;
+
+  const _MetricCell({required this.item});
+
+  @override
+  Widget build(BuildContext context) => Padding(
+    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            if (item.emphasisColor != null) ...[
+              Container(
+                width: 6,
+                height: 6,
+                decoration: BoxDecoration(
+                  color: item.emphasisColor,
+                  shape: BoxShape.circle,
+                ),
+              ),
+              const SizedBox(width: 5),
+            ],
+            Expanded(
+              child: Text(
+                item.label,
+                style: const TextStyle(
+                  fontSize: 11,
+                  color: AppColors.textSecondary,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 3),
+        Text(
+          item.value,
+          style: TextStyle(
+            fontSize: 14,
+            fontWeight: FontWeight.w700,
+            color: item.emphasisColor ?? AppColors.textPrimary,
+            fontFeatures: const [FontFeature.tabularFigures()],
+          ),
+        ),
+      ],
+    ),
+  );
+}
+
+class _KeyValueRow extends StatelessWidget {
+  final String label;
+  final String value;
+  final Color? emphasisColor;
+
+  const _KeyValueRow({
+    required this.label,
+    required this.value,
+    this.emphasisColor,
+  });
+
+  @override
+  Widget build(BuildContext context) => Padding(
+    padding: const EdgeInsets.symmetric(vertical: 4),
+    child: Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Expanded(
+          flex: 2,
+          child: Text(
+            label,
+            style: const TextStyle(
+              fontSize: 12.5,
+              color: AppColors.textSecondary,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+        ),
+        const SizedBox(width: 12),
+        Expanded(
+          flex: 3,
+          child: Text(
+            value,
+            textAlign: TextAlign.end,
+            style: TextStyle(
+              fontSize: 12.5,
+              fontWeight: FontWeight.w600,
+              color: emphasisColor ?? AppColors.textPrimary,
+            ),
+          ),
+        ),
+      ],
+    ),
+  );
+}
+
+class _AiProbabilityBar extends StatelessWidget {
+  final String label;
+  final double probability;
+  final double threshold;
+  final Color accentColor;
+
+  const _AiProbabilityBar({
+    required this.label,
+    required this.probability,
+    required this.threshold,
+    required this.accentColor,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final clamped = probability.clamp(0.0, 1.0);
+    final isElevated = clamped >= threshold;
+    final barColor = isElevated ? accentColor : AppColors.textMuted;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Row(
+          children: [
+            Expanded(
+              child: Text(
+                label,
+                style: const TextStyle(
+                  fontSize: 12.5,
+                  color: AppColors.textSecondary,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            ),
+            Text(
+              '${(clamped * 100).toStringAsFixed(1)}%',
+              style: TextStyle(
+                fontSize: 13,
+                fontWeight: FontWeight.w700,
+                color: isElevated ? accentColor : AppColors.textPrimary,
+                fontFeatures: const [FontFeature.tabularFigures()],
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 5),
+        ClipRRect(
+          borderRadius: BorderRadius.circular(4),
+          child: LinearProgressIndicator(
+            value: clamped,
+            minHeight: 5,
+            backgroundColor: AppColors.surfaceVariant,
+            valueColor: AlwaysStoppedAnimation<Color>(
+              barColor.withValues(alpha: isElevated ? 0.85 : 0.4),
+            ),
+          ),
+        ),
+      ],
     );
   }
 }

@@ -2,27 +2,76 @@ import 'dart:math' as math;
 
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../../../../core/constants/colombia_locations.dart';
 import '../../domain/entities/facility_catalog_status.dart';
 import '../../domain/entities/health_facility.dart';
 import '../../domain/repositories/facility_repository.dart';
 import '../datasources/facility_local_datasource.dart';
 import '../datasources/facility_remote_datasource.dart';
+import '../datasources/facility_seed_datasource.dart';
 import '../models/health_facility_model.dart';
 
 class FacilityRepositoryImpl implements FacilityRepository {
   static const _cursorKey = 'health_facilities_updated_at_cursor';
+  static const _seedVersionKey = 'health_facilities_seed_version';
+  static const _currentSeedVersion = 2;
   static const _pageSize = 500;
   static const _earthRadiusKm = 6371.0088;
 
   final FacilityRemoteDataSource remoteDataSource;
   final FacilityLocalDataSource localDataSource;
   final SharedPreferences preferences;
+  final FacilitySeedDataSource? seedDataSource;
 
   const FacilityRepositoryImpl({
     required this.remoteDataSource,
     required this.localDataSource,
     required this.preferences,
+    this.seedDataSource,
   });
+
+  Future<void> _ensureSeeded() async {
+    final seedSource = seedDataSource;
+    if (seedSource == null) return;
+
+    final activeCount = await localDataSource.countActiveFacilities();
+    if (activeCount == 0) {
+      final seed = await seedSource.loadSeedFacilities();
+      await localDataSource.applyFacilities(seed);
+      await preferences.setInt(_seedVersionKey, _currentSeedVersion);
+      return;
+    }
+
+    final installedSeedVersion = preferences.getInt(_seedVersionKey) ?? 0;
+    if (installedSeedVersion >= _currentSeedVersion) return;
+
+    final seed = await seedSource.loadSeedFacilities();
+    final existingFacilities = await localDataSource.getActiveFacilities();
+    final existingById = {
+      for (final facility in existingFacilities) facility.id: facility,
+    };
+
+    final updatesToApply = <HealthFacility>[];
+    for (final seedFacility in seed) {
+      final existing = existingById[seedFacility.id];
+      if (existing == null) {
+        updatesToApply.add(seedFacility);
+        continue;
+      }
+      final existingUpdatedAt = existing.updatedAt?.toUtc();
+      final seedUpdatedAt = seedFacility.updatedAt?.toUtc();
+      if (existingUpdatedAt == null ||
+          (seedUpdatedAt != null &&
+              existingUpdatedAt.isBefore(seedUpdatedAt))) {
+        updatesToApply.add(seedFacility);
+      }
+    }
+
+    if (updatesToApply.isNotEmpty) {
+      await localDataSource.applyFacilities(updatesToApply);
+    }
+    await preferences.setInt(_seedVersionKey, _currentSeedVersion);
+  }
 
   @override
   Future<int> syncFacilities() async {
@@ -75,6 +124,7 @@ class FacilityRepositoryImpl implements FacilityRepository {
 
   @override
   Future<FacilityCatalogStatus> getCatalogStatus() async {
+    await _ensureSeeded();
     final count = await localDataSource.countActiveFacilities();
     final cursorValue = preferences.getString(_cursorKey);
     return FacilityCatalogStatus(
@@ -97,6 +147,7 @@ class FacilityRepositoryImpl implements FacilityRepository {
     String? municipio,
   }) async {
     if (limit <= 0) return const [];
+    await _ensureSeeded();
     final departmentFilter = _normalized(departamento);
     final municipalityFilter = _normalized(municipio);
     final hasValidCoordinates =
@@ -113,13 +164,32 @@ class FacilityRepositoryImpl implements FacilityRepository {
       final territorialSearch =
           departmentFilter != null || municipalityFilter != null;
       if (territorialSearch) {
-        final facilities = await _filteredFacilities(
+        var facilities = await _filteredFacilities(
           soloObstetricas: soloObstetricas,
           soloUrgencias: soloUrgencias,
           soloObstetricasOUrgencias: soloObstetricasOUrgencias,
           department: departmentFilter,
           municipality: municipalityFilter,
         );
+        if (facilities.isEmpty &&
+            municipalityFilter != null &&
+            departmentFilter != null) {
+          facilities = await _filteredFacilities(
+            soloObstetricas: soloObstetricas,
+            soloUrgencias: soloUrgencias,
+            soloObstetricasOUrgencias: soloObstetricasOUrgencias,
+            department: departmentFilter,
+          );
+          if (facilities.isEmpty &&
+              (soloObstetricas || soloUrgencias || soloObstetricasOUrgencias)) {
+            facilities = await _filteredFacilities(
+              soloObstetricas: false,
+              soloUrgencias: false,
+              soloObstetricasOUrgencias: false,
+              department: departmentFilter,
+            );
+          }
+        }
         facilities.sort(_compareByName);
         return facilities.take(limit).toList(growable: false);
       }
@@ -270,10 +340,7 @@ class FacilityRepositoryImpl implements FacilityRepository {
     return _earthRadiusKm * centralAngle;
   }
 
-  static String? _normalized(String? value) {
-    final normalized = value?.trim().toLowerCase();
-    return normalized == null || normalized.isEmpty ? null : normalized;
-  }
+  static String? _normalized(String? value) => normalizeLocationName(value);
 
   static int _compareByName(HealthFacility left, HealthFacility right) {
     final byName = (left.name ?? '').compareTo(right.name ?? '');
