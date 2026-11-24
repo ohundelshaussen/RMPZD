@@ -2,6 +2,7 @@ import 'package:flutter/foundation.dart';
 
 import '../../features/triage/data/datasources/assessment_local_datasource.dart';
 import '../../features/triage/data/datasources/assessment_remote_datasource.dart';
+import '../../features/triage/domain/usecases/pull_own_assessments_usecase.dart';
 
 @immutable
 class SyncResult {
@@ -9,12 +10,16 @@ class SyncResult {
   final int fallidos;
   final int pendientes;
   final String? mensaje;
+  final int restaurados;
+  final String? pullError;
 
   const SyncResult({
     required this.enviados,
     required this.fallidos,
     required this.pendientes,
     this.mensaje,
+    this.restaurados = 0,
+    this.pullError,
   });
 }
 
@@ -24,6 +29,8 @@ class SyncService {
   final Future<bool> Function() hasInternet;
   final String? Function() currentOwnerId;
   final bool Function() hasSession;
+  final bool Function()? hasPullRole;
+  final PullOwnAssessmentsUseCase? pullOwnAssessments;
 
   bool _isSyncing = false;
   bool get isSyncing => _isSyncing;
@@ -34,6 +41,8 @@ class SyncService {
     required this.hasInternet,
     required this.currentOwnerId,
     required this.hasSession,
+    this.hasPullRole,
+    this.pullOwnAssessments,
   });
 
   Future<SyncResult> syncPending() async {
@@ -51,6 +60,8 @@ class SyncService {
     _isSyncing = true;
     var sent = 0;
     var failed = 0;
+    var restored = 0;
+    String? pullError;
     String? message;
     try {
       if (!await hasInternet()) {
@@ -137,6 +148,16 @@ class SyncService {
           if (stopAfterNetworkError) break;
         }
       }
+
+      if (hasPullRole?.call() ?? true) {
+        try {
+          if (_sessionMatches(ownerId)) {
+            restored = await pullOwnAssessments?.execute(ownerId: ownerId) ?? 0;
+          }
+        } catch (_) {
+          pullError = 'No se pudo restaurar el historial remoto.';
+        }
+      }
     } finally {
       _isSyncing = false;
     }
@@ -146,6 +167,8 @@ class SyncService {
       fallidos: failed,
       pendientes: await localDataSource.getUnsyncedCount(ownerId),
       mensaje: message,
+      restaurados: restored,
+      pullError: pullError,
     );
   }
 

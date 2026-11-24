@@ -6,6 +6,8 @@ class GetNearestFacilitiesUseCase {
 
   const GetNearestFacilitiesUseCase(this.repository);
 
+  /// Uses GPS coordinates when valid. Territory parameters are only a fallback
+  /// for assessments without a valid location.
   Future<List<HealthFacility>> execute(
     double? latitude,
     double? longitude, {

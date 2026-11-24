@@ -13,6 +13,75 @@ void main() {
   setUpAll(sqfliteFfiInit);
 
   test(
+    'GPS search ignores territory and orders facilities across municipalities by distance',
+    () async {
+      final (database, repository) = await _createRepository();
+      addTearDown(database.close);
+      final local = FacilityLocalDataSource(
+        dbHelper: DatabaseHelper.forDatabase(database),
+      );
+      await local.applyFacilities([
+        _facility(
+          'inside-x',
+          name: 'Centro A',
+          municipality: 'Municipio X',
+          latitude: 10.9,
+          longitude: -73.2,
+        ),
+        _facility(
+          'neighbor-b',
+          name: 'Centro B',
+          municipality: 'Municipio Y',
+          latitude: 10.46,
+          longitude: -73.25,
+        ),
+      ]);
+
+      final results = await GetNearestFacilitiesUseCase(
+        repository,
+      ).execute(10.4631, -73.2532, municipio: 'Municipio X', limite: 5);
+
+      expect(results.map((facility) => facility.id), [
+        'neighbor-b',
+        'inside-x',
+      ]);
+      expect(results.first.distanceKm, isNotNull);
+      expect(results.last.distanceKm, isNotNull);
+      expect(results.first.distanceKm!, lessThan(results.last.distanceKm!));
+    },
+  );
+
+  test('territory fallback is alphabetical and has no distance', () async {
+    final (database, repository) = await _createRepository();
+    addTearDown(database.close);
+    final local = FacilityLocalDataSource(
+      dbHelper: DatabaseHelper.forDatabase(database),
+    );
+    await local.applyFacilities([
+      _facility('z', name: 'Zulu', municipality: 'Riohacha'),
+      _facility('a', name: 'Alfa', municipality: 'Riohacha'),
+      _facility('neighbor', name: 'Vecino', municipality: 'Maicao'),
+    ]);
+
+    final results = await GetNearestFacilitiesUseCase(
+      repository,
+    ).execute(null, null, municipio: 'Riohacha');
+
+    expect(results.map((facility) => facility.id), ['a', 'z']);
+    expect(results.every((facility) => facility.distanceKm == null), isTrue);
+  });
+
+  test('without GPS or territory throws ArgumentError', () async {
+    final (database, repository) = await _createRepository();
+    addTearDown(database.close);
+
+    expect(
+      GetNearestFacilitiesUseCase(repository).execute(null, null),
+      throwsArgumentError,
+    );
+  });
+
+  test(
     'finds nearest facilities with Haversine distance and correct ordering',
     () async {
       final (database, repository) = await _createRepository();

@@ -314,6 +314,18 @@ class _AcceptingRemoteDataSource implements AssessmentRemoteDataSource {
   Future<void> upsertBatch(List<Map<String, dynamic>> payload) async {}
 
   @override
+  Future<Map<String, dynamic>> regenerateConsultationCode(String uuid) async =>
+      {'ok': true, 'codigo': 'ABCD1234'};
+
+  @override
+  Future<List<Map<String, dynamic>>> fetchOwnAssessments(
+    String ownerId, {
+    String? updatedAfter,
+    int offset = 0,
+    int limit = 200,
+  }) async => [];
+
+  @override
   bool isClientFailure(Object error) => false;
 
   @override

@@ -10,4 +10,9 @@ abstract class AssessmentRepository {
   });
   Future<List<AssessmentRecord>> getHistory({required String ownerId});
   Future<int> getUnsyncedCount({required String ownerId});
+  Future<int> pullOwnAssessments({required String ownerId});
+  Future<void> updateConsultationCode({
+    required String uuid,
+    required String code,
+  });
 }

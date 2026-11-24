@@ -55,7 +55,9 @@ import '../features/triage/domain/services/risk_classifier.dart';
 import '../features/triage/domain/usecases/evaluate_maternal_risk_usecase.dart';
 import '../features/triage/domain/usecases/get_assessment_history_usecase.dart';
 import '../features/triage/domain/usecases/get_unsynced_count_usecase.dart';
+import '../features/triage/domain/usecases/pull_own_assessments_usecase.dart';
 import '../features/triage/domain/usecases/save_assessment_usecase.dart';
+import '../features/triage/domain/usecases/regenerate_consultation_code_usecase.dart';
 import '../features/triage/presentation/providers/triage_provider.dart';
 
 List<SingleChildWidget> createAppProviders({
@@ -217,6 +219,8 @@ List<SingleChildWidget> createAppProviders({
     Provider<AssessmentRepository>(
       create: (context) => AssessmentRepositoryImpl(
         localDataSource: context.read<AssessmentLocalDataSource>(),
+        remoteDataSource: context.read<AssessmentRemoteDataSource>(),
+        preferences: sharedPreferences,
       ),
     ),
     Provider<RiskClassifier>(
@@ -241,6 +245,18 @@ List<SingleChildWidget> createAppProviders({
       create: (context) =>
           GetUnsyncedCountUseCase(context.read<AssessmentRepository>()),
     ),
+    Provider<PullOwnAssessmentsUseCase>(
+      create: (context) =>
+          PullOwnAssessmentsUseCase(context.read<AssessmentRepository>()),
+    ),
+    Provider<RegenerateConsultationCodeUseCase>(
+      create: (context) => RegenerateConsultationCodeUseCase(
+        repository: context.read<AssessmentRepository>(),
+        remoteDataSource: context.read<AssessmentRemoteDataSource>(),
+        hasInternet: context.read<ConnectivityService>().hasInternet,
+        hasSession: () => context.read<AuthProvider>().profile != null,
+      ),
+    ),
     Provider<SyncService>(
       create: (context) => SyncService(
         localDataSource: context.read<AssessmentLocalDataSource>(),
@@ -248,6 +264,11 @@ List<SingleChildWidget> createAppProviders({
         hasInternet: context.read<ConnectivityService>().hasInternet,
         currentOwnerId: () => context.read<AuthProvider>().profile?.id,
         hasSession: () => context.read<AuthProvider>().profile != null,
+        hasPullRole: () {
+          final role = context.read<AuthProvider>().profile?.role;
+          return role == UserRole.doctor || role == UserRole.admin;
+        },
+        pullOwnAssessments: context.read<PullOwnAssessmentsUseCase>(),
       ),
     ),
     ChangeNotifierProvider<HistoryProvider>(

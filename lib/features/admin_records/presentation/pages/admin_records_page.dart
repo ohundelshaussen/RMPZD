@@ -7,6 +7,8 @@ import '../../../auth/presentation/widgets/account_menu_button.dart';
 import '../../domain/entities/remote_assessment.dart';
 import '../../domain/repositories/admin_records_repository.dart';
 import '../providers/admin_records_provider.dart';
+import '../../../triage/domain/usecases/regenerate_consultation_code_usecase.dart';
+import '../../../triage/presentation/widgets/consultation_code_card.dart';
 
 class AdminRecordsPage extends StatefulWidget {
   const AdminRecordsPage({super.key});
@@ -354,6 +356,15 @@ class _AdminRecordsPageState extends State<AdminRecordsPage> {
               _detailField('médico', record.doctorName ?? 'No informado'),
               if (record.doctorEmail != null)
                 _detailField('correo del médico', record.doctorEmail),
+              if (record.fields['id'] is String) ...[
+                const SizedBox(height: 12),
+                ConsultationCodeCard(
+                  recordUuid: record.fields['id'] as String,
+                  regenerateUseCase: context
+                      .read<RegenerateConsultationCodeUseCase>(),
+                  adminMode: true,
+                ),
+              ],
             ],
           ),
         ),

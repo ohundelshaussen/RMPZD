@@ -25,6 +25,9 @@ class SyncProvider extends ChangeNotifier {
   int _pendingCount = 0;
   int get pendingCount => _pendingCount;
 
+  int _restoredCount = 0;
+  int get restoredCount => _restoredCount;
+
   DateTime? _lastSuccessfulSync;
   DateTime? get lastSuccessfulSync => _lastSuccessfulSync;
 
@@ -73,11 +76,17 @@ class SyncProvider extends ChangeNotifier {
     try {
       final result = await syncService!.syncPending();
       _pendingCount = result.pendientes;
+      _restoredCount = result.restaurados;
       _hasError =
           result.fallidos > 0 ||
           result.mensaje != null &&
               result.mensaje != 'Sin conexión a internet.';
-      _lastMessage = result.mensaje;
+      if (result.restaurados > 0) {
+        _lastMessage =
+            'Se restauraron ${result.restaurados} registros de su historial';
+      } else {
+        _lastMessage = result.mensaje ?? result.pullError;
+      }
       if (!_hasError && result.pendientes == 0) {
         _lastSuccessfulSync = DateTime.now();
       }

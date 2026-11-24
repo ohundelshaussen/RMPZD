@@ -101,6 +101,40 @@ void main() {
     expect(repository.lastMunicipality, 'Riohacha');
   });
 
+  testWidgets('GPS shows the nearest label on the first facility', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(800, 1200);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    final repository = _FakeFacilityRepository(
+      facilities: [
+        _facility(distanceKm: 2.4),
+        _facility(id: 'facility-2', distanceKm: 8.1),
+      ],
+    );
+    final provider = _provider(repository);
+    await tester.pumpWidget(
+      _app(
+        provider,
+        const NearestFacilitiesSection(
+          latitude: 11,
+          longitude: -72,
+          department: 'La Guajira',
+          municipality: 'Riohacha',
+          initiallyExpanded: true,
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('Más cercano'), findsOneWidget);
+    expect(find.textContaining('≈ 2,4 km en línea recta'), findsOneWidget);
+    expect(repository.lastDepartment, isNull);
+    expect(repository.lastMunicipality, isNull);
+  });
+
   testWidgets('empty catalog shows the connection message', (tester) async {
     final provider = _provider(
       _FakeFacilityRepository(availableCount: 0, facilities: const []),
@@ -260,13 +294,14 @@ NearestFacilitiesProvider _provider(
 }
 
 HealthFacility _facility({
+  String id = 'facility-1',
   bool? verified = true,
   bool? obstetricCare = true,
   bool? emergency24h = true,
   double? distanceKm = 2.4,
 }) {
   return HealthFacility(
-    id: 'facility-1',
+    id: id,
     name: 'Hospital de prueba',
     type: 'Hospital',
     careLevel: 2,

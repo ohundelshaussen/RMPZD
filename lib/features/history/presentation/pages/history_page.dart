@@ -8,6 +8,7 @@ import '../../../facilities/presentation/providers/facility_provider.dart';
 import '../../../facilities/presentation/widgets/nearest_facilities_section.dart';
 import '../../../triage/domain/entities/assessment_record.dart';
 import '../../../triage/presentation/widgets/consultation_code_card.dart';
+import '../../../triage/domain/usecases/regenerate_consultation_code_usecase.dart';
 import '../providers/history_provider.dart';
 
 class HistoryPage extends StatefulWidget {
@@ -139,10 +140,11 @@ class _HistoryPageState extends State<HistoryPage> {
                         fontSize: 13,
                       ),
                     ),
-                    Text(
-                      '${syncProvider.pendingCount} pendientes de sincronización',
-                      style: TextStyle(fontSize: 11, color: color),
-                    ),
+                    if (syncProvider.pendingCount > 0)
+                      Text(
+                        'Hay ${syncProvider.pendingCount} registros sin sincronizar. No desinstale la app hasta que se sincronicen.',
+                        style: TextStyle(fontSize: 11, color: color),
+                      ),
                   ],
                 ),
               ),
@@ -478,7 +480,21 @@ class _HistoryPageState extends State<HistoryPage> {
               ],
               if (record.consultationCode case final code?) ...[
                 const SizedBox(height: 12),
-                ConsultationCodeCard(code: code),
+                ConsultationCodeCard(
+                  code: code,
+                  recordUuid: record.uuid,
+                  syncStatus: record.syncStatus,
+                  regenerateUseCase: context
+                      .read<RegenerateConsultationCodeUseCase>(),
+                ),
+              ] else ...[
+                const SizedBox(height: 12),
+                ConsultationCodeCard(
+                  recordUuid: record.uuid,
+                  syncStatus: record.syncStatus,
+                  regenerateUseCase: context
+                      .read<RegenerateConsultationCodeUseCase>(),
+                ),
               ],
             ],
           ),

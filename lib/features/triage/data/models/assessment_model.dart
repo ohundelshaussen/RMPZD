@@ -70,6 +70,116 @@ class AssessmentModel {
     };
   }
 
+  factory AssessmentModel.fromRemoteJson(Map<String, dynamic> map) {
+    final fechaGuardado = DateTime.parse(map['fecha_evaluacion'] as String);
+    final id = map['id'];
+    final ownerId = map['created_by'];
+    if (id is! String || id.isEmpty) {
+      throw const FormatException(
+        'La evaluación remota no tiene un UUID válido.',
+      );
+    }
+    if (ownerId is! String || ownerId.isEmpty) {
+      throw const FormatException('La evaluación remota no tiene propietario.');
+    }
+
+    final hasConsent = _remoteBool(map['consentimiento_datos']);
+    final patient = PatientAssessment(
+      patientId: map['patient_id'] as String,
+      municipio: map['municipio'] as String,
+      departamento: map['departamento'] as String,
+      etnia: map['etnia'] as String,
+      zona: map['zona'] as String,
+      edadMaterna: (map['edad_materna'] as num).toInt(),
+      semanasGestacion: (map['semanas_gestacion'] as num).toInt(),
+      numeroControles: (map['numero_controles'] as num).toInt(),
+      distanciaKm: (map['distancia_km'] as num).toDouble(),
+      tiempoTrasladoHoras: (map['tiempo_traslado_horas'] as num).toDouble(),
+      hemoglobina: (map['hemoglobina'] as num).toDouble(),
+      presionSistolica: (map['presion_sistolica'] as num).toDouble(),
+      presionDiastolica: (map['presion_diastolica'] as num).toDouble(),
+      imc: (map['imc'] as num).toDouble(),
+      antecedentePreeclampsia: _remoteBool(map['antecedente_preeclampsia']),
+      antecedenteDiabetes: _remoteBool(map['antecedente_diabetes']),
+      partoInstitucionalPrevio: _remoteBool(map['parto_institucional_previo']),
+      afiliacionSgsss: map['afiliacion_sgsss'] as String,
+      fechaEvaluacion: fechaGuardado,
+      nombrePaciente: hasConsent ? map['nombre_paciente'] as String? : null,
+      direccionPaciente: hasConsent
+          ? map['direccion_paciente'] as String?
+          : null,
+      latitud: hasConsent ? (map['latitud'] as num?)?.toDouble() : null,
+      longitud: hasConsent ? (map['longitud'] as num?)?.toDouble() : null,
+      precisionGpsM: hasConsent
+          ? (map['precision_gps_m'] as num?)?.toDouble()
+          : null,
+      ubicacionCapturadaAt:
+          hasConsent && map['ubicacion_capturada_at'] is String
+          ? DateTime.parse(map['ubicacion_capturada_at'] as String)
+          : null,
+      consentimientoDatos: hasConsent,
+    );
+
+    final hasImmediateEmergency = _remoteBool(map['alerta_clinica_inmediata']);
+    final probabilityAdverseOutcome =
+        (map['probabilidad_desenlace_adverso'] as num).toDouble();
+    final alertTitles =
+        (map['descripcion_alerta'] as String?)
+            ?.split(' | ')
+            .where((title) => title.isNotEmpty)
+            .toList() ??
+        [];
+    final result = TriageResult(
+      riskLevel: _riskLevelFromLabel(map['nivel_riesgo_predicho'] as String),
+      probAlto: (map['probabilidad_riesgo_alto'] as num).toDouble(),
+      probMedio: 0,
+      probBajo: 0,
+      riesgoDesenlaceAdverso:
+          probabilityAdverseOutcome >=
+          ClinicalThresholds.aiAdverseOutcomeThreshold,
+      probDesenlaceAdverso: probabilityAdverseOutcome,
+      clinicalAlerts: alertTitles
+          .map(
+            (title) => ClinicalAlert(
+              title: title,
+              description: '',
+              severity: hasImmediateEmergency
+                  ? AlertSeverity.immediateEmergency
+                  : AlertSeverity.warning,
+              actionRequired: '',
+            ),
+          )
+          .toList(),
+      hasImmediateEmergency: hasImmediateEmergency,
+    );
+
+    final updatedAtValue = map['updated_at'];
+    final consentAtValue = map['consentimiento_at'];
+    return AssessmentModel(
+      updatedAt: updatedAtValue is String
+          ? DateTime.parse(updatedAtValue)
+          : null,
+      record: AssessmentRecord(
+        patient: patient,
+        result: result,
+        uuid: id,
+        ownerId: ownerId,
+        syncStatus: SyncStatus.synced,
+        consultationCode: null,
+        consentimientoAt: hasConsent && consentAtValue is String
+            ? DateTime.parse(consentAtValue)
+            : null,
+        fechaGuardado: fechaGuardado,
+      ),
+    );
+  }
+
+  static bool _remoteBool(Object? value) {
+    if (value is bool) return value;
+    if (value is num) return value != 0;
+    return value?.toString().toLowerCase() == 'true';
+  }
+
   Map<String, dynamic> toJson() => toMap();
 
   Map<String, dynamic> toRemoteJson() {
