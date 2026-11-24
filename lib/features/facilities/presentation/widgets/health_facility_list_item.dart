@@ -99,6 +99,27 @@ class HealthFacilityListItem extends StatelessWidget {
                     ),
                   ),
                 ),
+                if (showDistance && number == 1) ...[
+                  const SizedBox(width: 8),
+                  Container(
+                    key: const ValueKey('nearest-facility-label'),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 8,
+                      vertical: 4,
+                    ),
+                    decoration: BoxDecoration(
+                      color: Theme.of(context).colorScheme.primaryContainer,
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Text(
+                      'Más cercano',
+                      style: TextStyle(
+                        color: Theme.of(context).colorScheme.onPrimaryContainer,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ),
+                ],
                 if (onClose case final closeCallback?)
                   IconButton(
                     tooltip: 'Cerrar detalle',

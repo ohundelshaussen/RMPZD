@@ -129,7 +129,7 @@ class _FacilitiesMapPageState extends State<FacilitiesMapPage> {
                 FlutterMap(
                   options: MapOptions(
                     initialCenter: _initialCenter,
-                    initialZoom: 12,
+                    initialZoom: points.length == 1 ? 14 : 12,
                     onTap: (_, _) {
                       if (_selectedFacility != null) {
                         setState(() => _selectedFacility = null);
@@ -173,17 +173,17 @@ class _FacilitiesMapPageState extends State<FacilitiesMapPage> {
                                 widget.facilities[index].latitude!,
                                 widget.facilities[index].longitude!,
                               ),
-                              width: 44,
-                              height: 44,
+                              width: index == 0 ? 52 : 44,
+                              height: index == 0 ? 52 : 44,
                               child: GestureDetector(
                                 onTap: () => setState(
                                   () => _selectedFacility =
                                       widget.facilities[index],
                                 ),
                                 child: CircleAvatar(
-                                  backgroundColor: Theme.of(
-                                    context,
-                                  ).colorScheme.primary,
+                                  backgroundColor: index == 0
+                                      ? Colors.orange.shade700
+                                      : Theme.of(context).colorScheme.primary,
                                   child: Text(
                                     '${index + 1}',
                                     style: const TextStyle(

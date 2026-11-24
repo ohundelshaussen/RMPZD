@@ -1,4 +1,5 @@
 import '../../../../core/database/database_helper.dart';
+import 'package:sqflite/sqflite.dart';
 import '../../domain/entities/assessment_record.dart';
 import '../models/assessment_model.dart';
 
@@ -104,6 +105,42 @@ class AssessmentLocalDataSource {
     await db.update('assessments', {
       'owner_id': ownerId,
     }, where: 'owner_id IS NULL');
+  }
+
+  Future<int> insertPulledIgnoringExisting(
+    List<AssessmentModel> assessments,
+  ) async {
+    if (assessments.isEmpty) return 0;
+    final db = await dbHelper.database;
+    var inserted = 0;
+    await db.transaction((txn) async {
+      for (final assessment in assessments) {
+        final map = assessment.toMap();
+        map.remove('id');
+        map['sync_status'] = 'synced';
+        map['sincronizado'] = 1;
+        map['codigo_consulta'] = null;
+        map['sync_attempts'] = 0;
+        map['last_sync_error'] = null;
+        final result = await txn.insert(
+          'assessments',
+          map,
+          conflictAlgorithm: ConflictAlgorithm.ignore,
+        );
+        if (result != 0) inserted++;
+      }
+    });
+    return inserted;
+  }
+
+  Future<void> updateConsultationCode(String uuid, String code) async {
+    final db = await dbHelper.database;
+    await db.update(
+      'assessments',
+      {'codigo_consulta': code.replaceAll('-', '')},
+      where: 'uuid = ?',
+      whereArgs: [uuid],
+    );
   }
 
   Future<void> markSynced(List<String> uuids) async {

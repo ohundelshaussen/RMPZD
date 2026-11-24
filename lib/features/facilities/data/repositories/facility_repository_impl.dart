@@ -99,33 +99,38 @@ class FacilityRepositoryImpl implements FacilityRepository {
     if (limit <= 0) return const [];
     final departmentFilter = _normalized(departamento);
     final municipalityFilter = _normalized(municipio);
-    final territorialSearch =
-        departmentFilter != null || municipalityFilter != null;
+    final hasValidCoordinates =
+        latitude != null &&
+        longitude != null &&
+        latitude.isFinite &&
+        longitude.isFinite &&
+        latitude >= -90 &&
+        latitude <= 90 &&
+        longitude >= -180 &&
+        longitude <= 180;
 
-    if (territorialSearch) {
-      final facilities = await _filteredFacilities(
-        soloObstetricas: soloObstetricas,
-        soloUrgencias: soloUrgencias,
-        soloObstetricasOUrgencias: soloObstetricasOUrgencias,
-        department: departmentFilter,
-        municipality: municipalityFilter,
-      );
-      facilities.sort(_compareByName);
-      return facilities.take(limit).toList(growable: false);
-    }
-
-    if (latitude == null || longitude == null) {
-      throw ArgumentError('Indique coordenadas o un territorio.');
-    }
-    if (!latitude.isFinite ||
-        !longitude.isFinite ||
-        latitude < -90 ||
-        latitude > 90 ||
-        longitude < -180 ||
-        longitude > 180) {
+    if (!hasValidCoordinates) {
+      final territorialSearch =
+          departmentFilter != null || municipalityFilter != null;
+      if (territorialSearch) {
+        final facilities = await _filteredFacilities(
+          soloObstetricas: soloObstetricas,
+          soloUrgencias: soloUrgencias,
+          soloObstetricasOUrgencias: soloObstetricasOUrgencias,
+          department: departmentFilter,
+          municipality: municipalityFilter,
+        );
+        facilities.sort(_compareByName);
+        return facilities.take(limit).toList(growable: false);
+      }
+      if (latitude == null && longitude == null) {
+        throw ArgumentError('Indique coordenadas o un territorio.');
+      }
       throw ArgumentError('Las coordenadas no son válidas.');
     }
 
+    final searchLatitude = latitude;
+    final searchLongitude = longitude;
     final facilities = await _filteredFacilities(
       soloObstetricas: soloObstetricas,
       soloUrgencias: soloUrgencias,
@@ -155,16 +160,16 @@ class FacilityRepositoryImpl implements FacilityRepository {
                 (facility) => _withinBoundingBox(
                   facility.latitude!,
                   facility.longitude!,
-                  latitude,
-                  longitude,
+                  searchLatitude,
+                  searchLongitude,
                   radiusKm,
                 ),
               )
               .map(
                 (facility) => facility.withDistanceKm(
                   _haversineKm(
-                    latitude,
-                    longitude,
+                    searchLatitude,
+                    searchLongitude,
                     facility.latitude!,
                     facility.longitude!,
                   ),

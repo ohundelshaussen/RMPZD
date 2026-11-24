@@ -7,6 +7,7 @@ import '../providers/triage_provider.dart';
 import '../widgets/ai_probability_card.dart';
 import '../widgets/clinical_alert_section.dart';
 import '../widgets/consultation_code_card.dart';
+import '../../domain/usecases/regenerate_consultation_code_usecase.dart';
 import '../widgets/result_status_card.dart';
 
 class TriageResultPage extends StatelessWidget {
@@ -61,7 +62,13 @@ class TriageResultPage extends StatelessWidget {
                 if (provider.isSaved) ...[
                   if (provider.savedAssessment?.consultationCode
                       case final consultationCode?) ...[
-                    ConsultationCodeCard(code: consultationCode),
+                    ConsultationCodeCard(
+                      code: consultationCode,
+                      recordUuid: provider.savedAssessment!.uuid,
+                      syncStatus: provider.savedAssessment!.syncStatus,
+                      regenerateUseCase: context
+                          .read<RegenerateConsultationCodeUseCase?>(),
+                    ),
                     const SizedBox(height: 16),
                   ],
                   ElevatedButton.icon(

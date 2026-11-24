@@ -16,6 +16,8 @@ import '../../../facilities/presentation/widgets/nearest_facilities_section.dart
 import '../../domain/entities/remote_assessment.dart';
 import '../../domain/repositories/admin_records_repository.dart';
 import '../providers/admin_records_provider.dart';
+import '../../../triage/domain/usecases/regenerate_consultation_code_usecase.dart';
+import '../../../triage/presentation/widgets/consultation_code_card.dart';
 
 class AdminRecordsPage extends StatefulWidget {
   const AdminRecordsPage({super.key});
@@ -820,6 +822,16 @@ class _AdminRecordsPageState extends State<AdminRecordsPage> {
                       : DateFormat('dd/MM/yyyy HH:mm').format(date.toLocal()),
                 ),
               ]),
+              if (record.id case final recordId?)
+                if (sheetContext.read<RegenerateConsultationCodeUseCase?>()
+                    case final regenerateUseCase?) ...[
+                  const SizedBox(height: 12),
+                  ConsultationCodeCard(
+                    recordUuid: recordId,
+                    regenerateUseCase: regenerateUseCase,
+                    adminMode: true,
+                  ),
+                ],
               if (canEditOrDelete) ...[
                 const SizedBox(height: 16),
                 Row(

@@ -33,6 +33,7 @@ class NearestFacilitiesProvider extends ChangeNotifier {
     required this.checkInternet,
   });
 
+  /// Territory fields are used only as a fallback when GPS is unavailable.
   Future<void> load({
     double? latitude,
     double? longitude,
@@ -72,6 +73,18 @@ class NearestFacilitiesProvider extends ChangeNotifier {
         departamento: department,
         municipio: municipality,
       );
+      if (department == null &&
+          municipality == null &&
+          latitude != null &&
+          longitude != null) {
+        _facilities = List<HealthFacility>.of(_facilities)
+          ..sort((left, right) {
+            if (left.distanceKm == null && right.distanceKm == null) return 0;
+            if (left.distanceKm == null) return 1;
+            if (right.distanceKm == null) return -1;
+            return left.distanceKm!.compareTo(right.distanceKm!);
+          });
+      }
     } on Object {
       _errorMessage = 'No se pudieron cargar los centros cercanos.';
       _facilities = const [];

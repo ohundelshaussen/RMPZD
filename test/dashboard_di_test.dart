@@ -51,6 +51,8 @@ import 'package:rmpzd/features/triage/domain/usecases/delete_assessment_usecase.
 import 'package:rmpzd/features/triage/domain/usecases/evaluate_maternal_risk_usecase.dart';
 import 'package:rmpzd/features/triage/domain/usecases/get_assessment_history_usecase.dart';
 import 'package:rmpzd/features/triage/domain/usecases/get_unsynced_count_usecase.dart';
+import 'package:rmpzd/features/triage/domain/usecases/pull_own_assessments_usecase.dart';
+import 'package:rmpzd/features/triage/domain/usecases/regenerate_consultation_code_usecase.dart';
 import 'package:rmpzd/features/triage/domain/usecases/save_assessment_usecase.dart';
 import 'package:rmpzd/features/triage/domain/usecases/update_assessment_usecase.dart';
 import 'package:rmpzd/features/triage/presentation/providers/triage_provider.dart';
@@ -120,12 +122,14 @@ void main() {
                 context.read<DeleteAssessmentUseCase>(),
                 context.read<GetAssessmentHistoryUseCase>(),
                 context.read<GetUnsyncedCountUseCase>(),
+                context.read<PullOwnAssessmentsUseCase>(),
+                context.read<RegenerateConsultationCodeUseCase>(),
                 context.read<SyncService>(),
                 context.read<HistoryProvider>(),
                 context.read<SyncProvider>(),
                 context.read<TriageProvider>(),
               ];
-              expect(providers, hasLength(52));
+              expect(providers, hasLength(54));
               return const SizedBox();
             },
           ),

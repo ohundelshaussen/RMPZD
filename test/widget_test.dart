@@ -184,53 +184,58 @@ void main() {
     expect(find.text('Requerido'), findsWidgets);
   });
 
-  test('TriageProvider prevents duplicate saves and resets state cleanly', () async {
-    final repository = _FakeAssessmentRepository();
-    final provider = TriageProvider(
-      evaluateMaternalRisk: EvaluateMaternalRiskUseCase(_FakeRiskClassifier()),
-      saveAssessment: SaveAssessmentUseCase(repository),
-      currentOwnerId: () => 'test-user',
-    );
+  test(
+    'TriageProvider prevents duplicate saves and resets state cleanly',
+    () async {
+      final repository = _FakeAssessmentRepository();
+      final provider = TriageProvider(
+        evaluateMaternalRisk: EvaluateMaternalRiskUseCase(
+          _FakeRiskClassifier(),
+        ),
+        saveAssessment: SaveAssessmentUseCase(repository),
+        currentOwnerId: () => 'test-user',
+      );
 
-    final patient = PatientAssessment(
-      patientId: 'GUA-100',
-      municipio: 'Riohacha',
-      departamento: 'La Guajira',
-      etnia: 'Wayuu',
-      zona: 'Rural dispersa',
-      edadMaterna: 25,
-      semanasGestacion: 30,
-      numeroControles: 4,
-      distanciaKm: 10,
-      tiempoTrasladoHoras: 1,
-      hemoglobina: 11.5,
-      presionSistolica: 115,
-      presionDiastolica: 75,
-      imc: 23.0,
-      antecedentePreeclampsia: false,
-      antecedenteDiabetes: false,
-      partoInstitucionalPrevio: true,
-      afiliacionSgsss: 'Subsidiado',
-      fechaEvaluacion: DateTime.utc(2026, 11, 19),
-    );
+      final patient = PatientAssessment(
+        patientId: 'GUA-100',
+        municipio: 'Riohacha',
+        departamento: 'La Guajira',
+        etnia: 'Wayuu',
+        zona: 'Rural dispersa',
+        edadMaterna: 25,
+        semanasGestacion: 30,
+        numeroControles: 4,
+        distanciaKm: 10,
+        tiempoTrasladoHoras: 1,
+        hemoglobina: 11.5,
+        presionSistolica: 115,
+        presionDiastolica: 75,
+        imc: 23.0,
+        antecedentePreeclampsia: false,
+        antecedenteDiabetes: false,
+        partoInstitucionalPrevio: true,
+        afiliacionSgsss: 'Subsidiado',
+        fechaEvaluacion: DateTime.utc(2026, 11, 19),
+      );
 
-    await provider.evaluate(patient);
-    expect(provider.currentResult, isNotNull);
-    expect(provider.isSaved, isFalse);
+      await provider.evaluate(patient);
+      expect(provider.currentResult, isNotNull);
+      expect(provider.isSaved, isFalse);
 
-    final firstSave = await provider.saveCurrentAssessment();
-    final secondSave = await provider.saveCurrentAssessment();
-    expect(firstSave, isTrue);
-    expect(secondSave, isTrue);
-    expect(repository.saveCalls, 1);
-    expect(provider.isSaved, isTrue);
+      final firstSave = await provider.saveCurrentAssessment();
+      final secondSave = await provider.saveCurrentAssessment();
+      expect(firstSave, isTrue);
+      expect(secondSave, isTrue);
+      expect(repository.saveCalls, 1);
+      expect(provider.isSaved, isTrue);
 
-    provider.reset();
-    expect(provider.currentPatient, isNull);
-    expect(provider.currentResult, isNull);
-    expect(provider.savedAssessment, isNull);
-    expect(provider.isSaved, isFalse);
-  });
+      provider.reset();
+      expect(provider.currentPatient, isNull);
+      expect(provider.currentResult, isNull);
+      expect(provider.savedAssessment, isNull);
+      expect(provider.isSaved, isFalse);
+    },
+  );
 }
 
 class _FakeAuthRepository implements AuthRepository {
@@ -284,6 +289,15 @@ class _FakeRiskClassifier implements RiskClassifier {
 
 class _FakeAssessmentRepository implements AssessmentRepository {
   int saveCalls = 0;
+
+  @override
+  Future<void> updateConsultationCode({
+    required String uuid,
+    required String code,
+  }) async {}
+
+  @override
+  Future<int> pullOwnAssessments({required String ownerId}) async => 0;
 
   @override
   Future<List<AssessmentRecord>> getHistory({required String ownerId}) async =>

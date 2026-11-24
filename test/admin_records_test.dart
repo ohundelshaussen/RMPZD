@@ -14,6 +14,12 @@ import 'package:rmpzd/features/admin_records/domain/usecases/get_admin_assessmen
 import 'package:rmpzd/features/admin_records/domain/usecases/update_admin_assessment_usecase.dart';
 import 'package:rmpzd/features/admin_records/presentation/pages/admin_records_page.dart';
 import 'package:rmpzd/features/admin_records/presentation/providers/admin_records_provider.dart';
+import 'package:rmpzd/features/triage/data/datasources/assessment_remote_datasource.dart';
+import 'package:rmpzd/features/triage/domain/entities/assessment_record.dart';
+import 'package:rmpzd/features/triage/domain/entities/patient_assessment.dart';
+import 'package:rmpzd/features/triage/domain/entities/triage_result.dart';
+import 'package:rmpzd/features/triage/domain/repositories/assessment_repository.dart';
+import 'package:rmpzd/features/triage/domain/usecases/regenerate_consultation_code_usecase.dart';
 
 void main() {
   group('AdminRecordsProvider', () {
@@ -280,6 +286,53 @@ void main() {
         expect(find.text('Protegido en servidor (solo hash)'), findsOneWidget);
       },
     );
+
+    testWidgets(
+      'AdminRecordsPage renders regenerate consultation code action in detail sheet',
+      (tester) async {
+        final source = _FakeDataSource(
+          onFetch: (offset, limit, filters) => [
+            {
+              ..._assessment(12),
+              'nombre_paciente': 'Camila Soto',
+              'codigo_consulta': null,
+              'codigo_consulta_hash': 'hash-123',
+            },
+          ],
+        );
+        final provider = _provider(source);
+        final regenerateUseCase = RegenerateConsultationCodeUseCase(
+          repository: _DummyAssessmentRepository(),
+          remoteDataSource: _DummyAssessmentRemoteDataSource(),
+          hasInternet: () async => true,
+          hasSession: () => true,
+        );
+
+        await tester.pumpWidget(
+          MultiProvider(
+            providers: [
+              ChangeNotifierProvider<AdminRecordsProvider>.value(value: provider),
+              Provider<RegenerateConsultationCodeUseCase>.value(
+                value: regenerateUseCase,
+              ),
+              Provider<ConnectivityService>.value(value: _FakeConnectivity(true)),
+            ],
+            child: const MaterialApp(home: AdminRecordsPage()),
+          ),
+        );
+        await tester.pumpAndSettle();
+
+        await tester.tap(find.text('Camila Soto'));
+        await tester.pumpAndSettle();
+
+        await tester.scrollUntilVisible(
+          find.text('Generar nuevo código'),
+          200,
+          scrollable: find.byType(Scrollable).last,
+        );
+        expect(find.text('Generar nuevo código'), findsOneWidget);
+      },
+    );
   });
 }
 
@@ -369,4 +422,71 @@ class _FakeConnectivity extends ConnectivityService {
 
   @override
   Future<bool> hasInternet() async => online;
+}
+
+class _DummyAssessmentRepository implements AssessmentRepository {
+  @override
+  Future<void> deleteAssessment({required String uuid}) async {}
+
+  @override
+  Future<List<AssessmentRecord>> getHistory({required String ownerId}) async =>
+      const [];
+
+  @override
+  Future<int> getUnsyncedCount({required String ownerId}) async => 0;
+
+  @override
+  Future<int> pullOwnAssessments({required String ownerId}) async => 0;
+
+  @override
+  Future<AssessmentRecord> saveAssessment(
+    PatientAssessment patient,
+    TriageResult result, {
+    required String ownerId,
+  }) => throw UnimplementedError();
+
+  @override
+  Future<AssessmentRecord> updateAssessment(
+    AssessmentRecord existingRecord,
+    PatientAssessment updatedPatient,
+    TriageResult updatedResult,
+  ) => throw UnimplementedError();
+
+  @override
+  Future<void> updateConsultationCode({
+    required String uuid,
+    required String code,
+  }) async {}
+}
+
+class _DummyAssessmentRemoteDataSource implements AssessmentRemoteDataSource {
+  @override
+  Future<bool> deleteAssessment(String uuid) async => true;
+
+  @override
+  Future<List<Map<String, dynamic>>> fetchOwnAssessments(
+    String ownerId, {
+    String? updatedAfter,
+    int offset = 0,
+    int limit = 200,
+  }) async => const [];
+
+  @override
+  bool isClientFailure(Object error) => false;
+
+  @override
+  bool isNetworkFailure(Object error) => false;
+
+  @override
+  Future<Map<String, dynamic>> regenerateConsultationCode(String uuid) async =>
+      {'ok': true, 'codigo': 'ZXCV5678'};
+
+  @override
+  Future<bool> updateAssessment(
+    String uuid,
+    Map<String, dynamic> payload,
+  ) async => true;
+
+  @override
+  Future<void> upsertBatch(List<Map<String, dynamic>> payload) async {}
 }

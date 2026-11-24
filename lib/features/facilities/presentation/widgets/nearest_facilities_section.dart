@@ -34,7 +34,15 @@ class _NearestFacilitiesSectionState extends State<NearestFacilitiesSection> {
   late bool _isExpanded;
   late bool _onlyObstetricOrEmergency;
 
-  bool get _hasLocation => widget.latitude != null && widget.longitude != null;
+  bool get _hasLocation =>
+      widget.latitude != null &&
+      widget.longitude != null &&
+      widget.latitude!.isFinite &&
+      widget.longitude!.isFinite &&
+      widget.latitude! >= -90 &&
+      widget.latitude! <= 90 &&
+      widget.longitude! >= -180 &&
+      widget.longitude! <= 180;
 
   @override
   void initState() {
@@ -52,7 +60,11 @@ class _NearestFacilitiesSectionState extends State<NearestFacilitiesSection> {
   void didUpdateWidget(covariant NearestFacilitiesSection oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.highRisk != widget.highRisk ||
-        oldWidget.initiallyExpanded != widget.initiallyExpanded) {
+        oldWidget.initiallyExpanded != widget.initiallyExpanded ||
+        oldWidget.latitude != widget.latitude ||
+        oldWidget.longitude != widget.longitude ||
+        oldWidget.department != widget.department ||
+        oldWidget.municipality != widget.municipality) {
       _isExpanded = widget.initiallyExpanded;
       _onlyObstetricOrEmergency = widget.highRisk;
       if (_isExpanded) {
@@ -67,8 +79,8 @@ class _NearestFacilitiesSectionState extends State<NearestFacilitiesSection> {
     return context.read<NearestFacilitiesProvider>().load(
       latitude: widget.latitude,
       longitude: widget.longitude,
-      department: widget.department,
-      municipality: widget.municipality,
+      department: _hasLocation ? null : widget.department,
+      municipality: _hasLocation ? null : widget.municipality,
       soloObstetricasOUrgencias: _onlyObstetricOrEmergency,
       limit: 5,
     );
