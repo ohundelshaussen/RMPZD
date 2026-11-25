@@ -23,6 +23,9 @@ import 'package:rmpzd/features/facilities/domain/usecases/get_nearest_facilities
 import 'package:rmpzd/features/facilities/domain/usecases/sync_facilities_usecase.dart';
 import 'package:rmpzd/features/facilities/presentation/providers/facility_provider.dart';
 import 'package:rmpzd/features/history/presentation/providers/history_provider.dart';
+import 'package:rmpzd/features/monitoring/data/datasources/case_remote_data_source.dart';
+import 'package:rmpzd/features/monitoring/data/services/monitoring_notification_service.dart';
+import 'package:rmpzd/features/monitoring/presentation/providers/monitoring_provider.dart';
 import 'package:rmpzd/features/triage/data/datasources/assessment_local_datasource.dart';
 import 'package:rmpzd/features/triage/data/datasources/assessment_remote_datasource.dart';
 import 'package:rmpzd/features/triage/data/repositories/assessment_repository_impl.dart';
@@ -100,6 +103,40 @@ void main() {
   });
 
   test(
+    'monitor session does not run assessment sync or read local counts',
+    () async {
+      final fixture = await _createFixture();
+      addTearDown(fixture.database.close);
+      final monitor = UserProfile(
+        id: 'monitor-1',
+        email: 'monitor@example.test',
+        fullName: 'Monitor Test',
+        role: UserRole.monitor,
+        active: true,
+      );
+      final authProvider = _authProvider(profile: monitor);
+      await authProvider.signIn(monitor.email, 'password');
+      final countingService = _CountingSyncService(fixture.syncService);
+      final countingCount = _CountingUnsyncedCount(fixture.repository);
+      final syncProvider = SyncProvider(
+        syncService: countingService,
+        connectivityService: _FakeConnectivityService(),
+        authProvider: authProvider,
+        getUnsyncedCount: countingCount,
+      );
+      addTearDown(authProvider.dispose);
+      addTearDown(syncProvider.dispose);
+
+      await syncProvider.syncNow();
+
+      expect(authProvider.isMonitor, isTrue);
+      expect(countingService.calls, 0);
+      expect(countingCount.calls, 0);
+      expect(syncProvider.pendingCount, 0);
+    },
+  );
+
+  test(
     'a failed facility pull does not affect assessment synchronization',
     () async {
       final fixture = await _createFixture();
@@ -157,6 +194,9 @@ void main() {
             builder: (context) {
               context.read<ConnectivityService>();
               context.read<AuthProvider>();
+              context.read<CaseRemoteDataSource>();
+              context.read<MonitoringNotificationService>();
+              context.read<MonitoringProvider>();
               context.read<DatabaseHelper>();
               context.read<AssessmentLocalDataSource>();
               context.read<AssessmentRemoteDataSource>();
@@ -215,8 +255,8 @@ Future<_Fixture> _createFixture() async {
   final database = await databaseFactoryFfi.openDatabase(
     inMemoryDatabasePath,
     options: OpenDatabaseOptions(
-      version: 6,
-      onCreate: (db, version) => DatabaseHelper.createV6Schema(db),
+      version: 7,
+      onCreate: (db, version) => DatabaseHelper.createV7Schema(db),
     ),
   );
   final local = AssessmentLocalDataSource(
@@ -233,8 +273,8 @@ Future<_Fixture> _createFixture() async {
   return _Fixture(database, repository, syncService);
 }
 
-AuthProvider _authProvider() {
-  final repository = _FakeAuthRepository();
+AuthProvider _authProvider({UserProfile? profile}) {
+  final repository = _FakeAuthRepository(profile: profile);
   return AuthProvider(
     signInUseCase: SignInUseCase(repository),
     signOutUseCase: SignOutUseCase(repository),
@@ -249,6 +289,40 @@ class _Fixture {
   final SyncService syncService;
 
   const _Fixture(this.database, this.repository, this.syncService);
+}
+
+class _CountingSyncService extends SyncService {
+  int calls = 0;
+
+  _CountingSyncService(SyncService delegate)
+    : super(
+        localDataSource: delegate.localDataSource,
+        remoteDataSource: delegate.remoteDataSource,
+        hasInternet: delegate.hasInternet,
+        currentOwnerId: delegate.currentOwnerId,
+        hasSession: delegate.hasSession,
+        hasSyncRole: delegate.hasSyncRole,
+        hasPullRole: delegate.hasPullRole,
+        pullOwnAssessments: delegate.pullOwnAssessments,
+      );
+
+  @override
+  Future<SyncResult> syncPending() {
+    calls++;
+    return super.syncPending();
+  }
+}
+
+class _CountingUnsyncedCount extends GetUnsyncedCountUseCase {
+  int calls = 0;
+
+  _CountingUnsyncedCount(super.repository);
+
+  @override
+  Future<int> execute({required String ownerId}) async {
+    calls++;
+    return 0;
+  }
 }
 
 class _TrackingHistoryProvider extends HistoryProvider {
@@ -345,13 +419,18 @@ class _AcceptingRemoteDataSource implements AssessmentRemoteDataSource {
 }
 
 class _FakeAuthRepository implements AuthRepository {
-  static const _profile = UserProfile(
+  static const _doctorProfile = UserProfile(
     id: 'doctor-1',
     email: 'doctor@example.test',
     fullName: 'Doctor Test',
     role: UserRole.doctor,
     active: true,
   );
+
+  final UserProfile profile;
+
+  _FakeAuthRepository({UserProfile? profile})
+    : profile = profile ?? _doctorProfile;
 
   @override
   Future<UserProfile?> getCurrentProfile() async => null;
@@ -360,7 +439,7 @@ class _FakeAuthRepository implements AuthRepository {
   Stream<UserProfile?> get sessionChanges => const Stream.empty();
 
   @override
-  Future<UserProfile> signIn(String email, String password) async => _profile;
+  Future<UserProfile> signIn(String email, String password) async => profile;
 
   @override
   Future<void> signOut() async {}

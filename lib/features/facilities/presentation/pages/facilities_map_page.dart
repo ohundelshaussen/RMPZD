@@ -18,6 +18,7 @@ class FacilitiesMapPage extends StatefulWidget {
   final bool isOnline;
   final bool catalogAvailable;
   final FacilityLinkLauncher launcher;
+  final ValueChanged<HealthFacility>? onRefer;
 
   const FacilitiesMapPage({
     required this.facilities,
@@ -26,6 +27,7 @@ class FacilitiesMapPage extends StatefulWidget {
     required this.isOnline,
     required this.catalogAvailable,
     required this.launcher,
+    this.onRefer,
     super.key,
   });
 
@@ -449,6 +451,9 @@ class _FacilitiesMapPageState extends State<FacilitiesMapPage> {
                           originLongitude: widget.longitude,
                           onClose: () =>
                               setState(() => _selectedFacility = null),
+                          onRefer: widget.onRefer == null
+                              ? null
+                              : () => widget.onRefer!(selected),
                         ),
                       ),
                     ),
@@ -489,9 +494,7 @@ class _FacilitiesMapPageState extends State<FacilitiesMapPage> {
                                   size: 14,
                                 ),
                               ),
-                              label: Text(
-                                '$markerNumber. $name$distanceLabel',
-                              ),
+                              label: Text('$markerNumber. $name$distanceLabel'),
                               onPressed: () => _selectFacility(facility),
                             );
                           },

@@ -1,9 +1,10 @@
-enum UserRole { admin, doctor }
+enum UserRole { admin, doctor, monitor }
 
 class UserProfile {
   final String id;
   final String email;
   final String? fullName;
+  final String? telefono;
   final UserRole role;
   final bool active;
 
@@ -11,6 +12,7 @@ class UserProfile {
     required this.id,
     required this.email,
     required this.fullName,
+    this.telefono,
     required this.role,
     required this.active,
   });
@@ -24,7 +26,7 @@ class UserProfile {
   factory UserProfile.fromJson(Map<String, dynamic> json) {
     final roleName = json['role'];
     if (roleName is! String ||
-        roleName != UserRole.admin.name && roleName != UserRole.doctor.name) {
+        !UserRole.values.any((role) => role.name == roleName)) {
       throw FormatException('Rol de usuario no válido: $roleName');
     }
 
@@ -38,6 +40,7 @@ class UserProfile {
       id: _requiredString(json, 'id'),
       email: _requiredString(json, 'email'),
       fullName: rawFullName is String ? rawFullName : null,
+      telefono: json['telefono'] is String ? json['telefono'] as String : null,
       role: UserRole.values.byName(roleName),
       active: activeValue,
     );
@@ -50,6 +53,7 @@ class UserProfile {
     'id': id,
     'email': email,
     'full_name': fullName,
+    'telefono': telefono,
     'role': role.name,
     'active': active,
   };
@@ -67,5 +71,6 @@ extension UserRoleLabel on UserRole {
   String get label => switch (this) {
     UserRole.admin => 'Administrador',
     UserRole.doctor => 'Doctor',
+    UserRole.monitor => 'Monitor',
   };
 }

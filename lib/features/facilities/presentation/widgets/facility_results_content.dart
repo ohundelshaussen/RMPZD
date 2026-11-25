@@ -22,6 +22,7 @@ class FacilityResultsContent extends StatelessWidget {
   final bool hasAssessmentLocation;
   final double? assessmentLatitude;
   final double? assessmentLongitude;
+  final ValueChanged<HealthFacility>? onRefer;
 
   const FacilityResultsContent({
     required this.facilities,
@@ -30,6 +31,7 @@ class FacilityResultsContent extends StatelessWidget {
     required this.hasAssessmentLocation,
     this.assessmentLatitude,
     this.assessmentLongitude,
+    this.onRefer,
     this.errorMessage,
     super.key,
   });
@@ -117,6 +119,9 @@ class FacilityResultsContent extends StatelessWidget {
               showDistance: hasAssessmentLocation,
               originLatitude: assessmentLatitude,
               originLongitude: assessmentLongitude,
+              onRefer: onRefer == null
+                  ? null
+                  : () => onRefer!(facilities[index]),
             ),
       ],
     );

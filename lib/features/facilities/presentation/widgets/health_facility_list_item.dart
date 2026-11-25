@@ -13,6 +13,7 @@ class HealthFacilityListItem extends StatelessWidget {
   final VoidCallback? onClose;
   final double? originLatitude;
   final double? originLongitude;
+  final VoidCallback? onRefer;
 
   const HealthFacilityListItem({
     required this.facility,
@@ -22,6 +23,7 @@ class HealthFacilityListItem extends StatelessWidget {
     this.onClose,
     this.originLatitude,
     this.originLongitude,
+    this.onRefer,
     super.key,
   });
 
@@ -206,9 +208,7 @@ class HealthFacilityListItem extends StatelessWidget {
               Wrap(
                 spacing: 6,
                 runSpacing: 5,
-                children: [
-                  for (final tag in services) _ServiceTag(tag: tag),
-                ],
+                children: [for (final tag in services) _ServiceTag(tag: tag)],
               ),
             ],
             const SizedBox(height: 11),
@@ -218,6 +218,17 @@ class HealthFacilityListItem extends StatelessWidget {
               originLatitude: originLatitude,
               originLongitude: originLongitude,
             ),
+            if (onRefer != null) ...[
+              const SizedBox(height: 8),
+              SizedBox(
+                width: double.infinity,
+                child: OutlinedButton.icon(
+                  onPressed: onRefer,
+                  icon: const Icon(Icons.reply_all_rounded, size: 18),
+                  label: const Text('Remitir a este centro'),
+                ),
+              ),
+            ],
           ],
         ),
       ),

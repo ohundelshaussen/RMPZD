@@ -48,6 +48,10 @@ import '../features/facilities/presentation/providers/facility_provider.dart';
 import '../features/facilities/presentation/providers/nearest_facilities_provider.dart';
 import '../features/facilities/presentation/services/facility_link_launcher.dart';
 import '../features/history/presentation/providers/history_provider.dart';
+import '../features/monitoring/data/datasources/case_remote_data_source.dart';
+import '../features/monitoring/data/services/local_monitoring_notification_service.dart';
+import '../features/monitoring/data/services/monitoring_notification_service.dart';
+import '../features/monitoring/presentation/providers/monitoring_provider.dart';
 import '../features/patient_portal/data/datasources/patient_portal_remote_data_source.dart';
 import '../features/patient_portal/domain/usecases/lookup_patient_records_usecase.dart';
 import '../features/patient_portal/presentation/providers/patient_portal_provider.dart';
@@ -161,8 +165,7 @@ List<SingleChildWidget> createAppProviders({
       ),
     ),
     Provider<AdminUsersRemoteDataSource>(
-      create: (_) =>
-          SupabaseAdminUsersRemoteDataSource(client: supabaseClient),
+      create: (_) => SupabaseAdminUsersRemoteDataSource(client: supabaseClient),
     ),
     Provider<AdminUsersRepository>(
       create: (context) =>
@@ -233,6 +236,21 @@ List<SingleChildWidget> createAppProviders({
         syncFacilities: context.read<SyncFacilitiesUseCase>(),
         getCatalogStatus: context.read<GetFacilityCatalogStatusUseCase>(),
         getNearestFacilities: context.read<GetNearestFacilitiesUseCase>(),
+      ),
+    ),
+    Provider<CaseRemoteDataSource>(
+      create: (_) => SupabaseCaseRemoteDataSource(client: supabaseClient),
+    ),
+    Provider<MonitoringNotificationService>(
+      create: (_) => LocalMonitoringNotificationService(),
+    ),
+    ChangeNotifierProvider<MonitoringProvider>(
+      lazy: false,
+      create: (context) => MonitoringProvider(
+        caseRemoteDataSource: context.read<CaseRemoteDataSource>(),
+        notificationService: context.read<MonitoringNotificationService>(),
+        authProvider: context.read<AuthProvider>(),
+        syncFacilityCatalog: context.read<FacilityProvider>().sync,
       ),
     ),
     ChangeNotifierProvider<NearestFacilitiesProvider>(
@@ -310,6 +328,10 @@ List<SingleChildWidget> createAppProviders({
         hasInternet: context.read<ConnectivityService>().hasInternet,
         currentOwnerId: () => context.read<AuthProvider>().profile?.id,
         hasSession: () => context.read<AuthProvider>().profile != null,
+        hasSyncRole: () {
+          final role = context.read<AuthProvider>().profile?.role;
+          return role == UserRole.doctor || role == UserRole.admin;
+        },
         hasPullRole: () {
           final role = context.read<AuthProvider>().profile?.role;
           return role == UserRole.doctor || role == UserRole.admin;

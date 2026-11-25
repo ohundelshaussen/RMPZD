@@ -5,6 +5,7 @@ import 'package:flutter/services.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:latlong2/latlong.dart';
 
+import '../../../../core/utils/phone_number.dart';
 import '../../../facilities/presentation/pages/location_picker_page.dart';
 import 'form_section_header.dart';
 
@@ -12,6 +13,7 @@ class PatientIdentityData {
   final bool consentimientoDatos;
   final String? nombrePaciente;
   final String? direccionPaciente;
+  final String? telefonoPaciente;
   final double? latitud;
   final double? longitud;
   final double? precisionGpsM;
@@ -21,6 +23,7 @@ class PatientIdentityData {
     this.consentimientoDatos = false,
     this.nombrePaciente,
     this.direccionPaciente,
+    this.telefonoPaciente,
     this.latitud,
     this.longitud,
     this.precisionGpsM,
@@ -148,6 +151,7 @@ class _PatientIdentitySectionState extends State<PatientIdentitySection> {
   static const _captureTimeout = Duration(seconds: 20);
   final _nameController = TextEditingController();
   final _addressController = TextEditingController();
+  final _phoneController = TextEditingController();
   bool _consent = false;
   _CaptureStatus _captureStatus = _CaptureStatus.idle;
   CapturedLocation? _location;
@@ -162,6 +166,7 @@ class _PatientIdentitySectionState extends State<PatientIdentitySection> {
   void dispose() {
     _nameController.dispose();
     _addressController.dispose();
+    _phoneController.dispose();
     super.dispose();
   }
 
@@ -175,6 +180,7 @@ class _PatientIdentitySectionState extends State<PatientIdentitySection> {
         consentimientoDatos: true,
         nombrePaciente: _nameController.text.trim(),
         direccionPaciente: _addressController.text.trim(),
+        telefonoPaciente: _phoneController.text.trim(),
         latitud: _location?.latitude,
         longitud: _location?.longitude,
         precisionGpsM: _location?.accuracyMeters,
@@ -191,7 +197,7 @@ class _PatientIdentitySectionState extends State<PatientIdentitySection> {
         builder: (context) => AlertDialog(
           title: const Text('Retirar consentimiento'),
           content: const Text(
-            'Se borrarán el nombre, la dirección y la ubicación del formulario.',
+            'Se borrarán el nombre, el teléfono, la dirección y la ubicación del formulario.',
           ),
           actions: [
             TextButton(
@@ -208,6 +214,7 @@ class _PatientIdentitySectionState extends State<PatientIdentitySection> {
       if (confirmed != true || !mounted) return;
       _nameController.clear();
       _addressController.clear();
+      _phoneController.clear();
       _location = null;
       _locationCapturedAt = null;
       _locationMessage = null;
@@ -368,6 +375,16 @@ class _PatientIdentitySectionState extends State<PatientIdentitySection> {
     return null;
   }
 
+  String? _validatePhone(String? value) {
+    if (!_consent) return null;
+    final phone = value?.trim() ?? '';
+    if (phone.isEmpty) return 'El teléfono de contacto es obligatorio.';
+    if (!PhoneNumber.isValidAssessmentNumber(phone)) {
+      return 'Ingrese entre 7 y 15 dígitos.';
+    }
+    return null;
+  }
+
   @override
   Widget build(BuildContext context) {
     final disabledColor = Theme.of(context).disabledColor;
@@ -387,7 +404,7 @@ class _PatientIdentitySectionState extends State<PatientIdentitySection> {
                   value: _consent,
                   onChanged: _changeConsent,
                   title: const Text(
-                    'La paciente autoriza el registro de su nombre, dirección y ubicación para su atención y seguimiento.',
+                    'La paciente autoriza el registro de su nombre, teléfono de contacto, dirección y ubicación para su atención y seguimiento.',
                   ),
                 ),
                 const SizedBox(height: 8),
@@ -417,6 +434,23 @@ class _PatientIdentitySectionState extends State<PatientIdentitySection> {
                         'Dirección o descripción de la vivienda (vereda, corregimiento, barrio, referencias)',
                     alignLabelWithHint: true,
                     prefixIcon: Icon(Icons.home_outlined, size: 20),
+                    counterText: '',
+                  ),
+                ),
+                const SizedBox(height: 12),
+                TextFormField(
+                  controller: _phoneController,
+                  enabled: _consent,
+                  maxLength: 25,
+                  keyboardType: TextInputType.phone,
+                  inputFormatters: [
+                    FilteringTextInputFormatter.allow(RegExp(r'[0-9+()\-\s]')),
+                  ],
+                  validator: _validatePhone,
+                  onChanged: (_) => _emitData(),
+                  decoration: const InputDecoration(
+                    labelText: 'Teléfono de contacto de la paciente',
+                    prefixIcon: Icon(Icons.phone_outlined, size: 20),
                     counterText: '',
                   ),
                 ),

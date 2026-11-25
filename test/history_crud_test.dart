@@ -319,8 +319,8 @@ _createFixture() async {
   final db = await databaseFactoryFfi.openDatabase(
     inMemoryDatabasePath,
     options: OpenDatabaseOptions(
-      version: 6,
-      onCreate: (db, version) => DatabaseHelper.createV6Schema(db),
+      version: 7,
+      onCreate: (db, version) => DatabaseHelper.createV7Schema(db),
     ),
   );
   final local = AssessmentLocalDataSource(

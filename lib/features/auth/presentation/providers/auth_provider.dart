@@ -35,6 +35,7 @@ class AuthProvider extends ChangeNotifier {
 
   UserProfile? _profile;
   UserProfile? get profile => _profile;
+  bool get isMonitor => _profile?.role == UserRole.monitor;
 
   bool _isBusy = false;
   bool get isBusy => _isBusy;

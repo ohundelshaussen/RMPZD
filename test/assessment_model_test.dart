@@ -31,6 +31,7 @@ void main() {
           partoInstitucionalPrevio: true,
           afiliacionSgsss: 'Subsidiado',
           fechaEvaluacion: date,
+          telefonoPaciente: '3001234567',
         ),
         result: const TriageResult(
           riskLevel: RiskLevel.alto,
@@ -107,6 +108,7 @@ void main() {
           'codigo_consulta',
           'nombre_paciente',
           'direccion_paciente',
+          'telefono_paciente',
           'latitud',
           'longitud',
           'precision_gps_m',
@@ -115,7 +117,7 @@ void main() {
           'consentimiento_at',
         ]),
       );
-      expect(row, hasLength(43));
+      expect(row, hasLength(44));
       expect(row['codigo_consulta'], 'ABCD2345');
       expect(model.toJson(), row);
       expect(restored.idLocal, 42);
@@ -161,6 +163,7 @@ void main() {
         partoInstitucionalPrevio: true,
         afiliacionSgsss: 'Subsidiado',
         fechaEvaluacion: date,
+        telefonoPaciente: '3001234567',
       ),
       result: const TriageResult(
         riskLevel: RiskLevel.medio,
@@ -189,6 +192,7 @@ void main() {
     expect(payload['fecha_evaluacion'], '2026-11-11T20:00:00.000Z');
     expect(payload['codigo_consulta'], 'ABCD2345');
     expect(payload['consentimiento_datos'], isFalse);
+    expect(payload['telefono_paciente'], isNull);
     expect(payload['nombre_paciente'], isNull);
     expect(payload['direccion_paciente'], isNull);
     expect(payload['latitud'], isNull);
@@ -210,7 +214,7 @@ void main() {
         ),
       ),
     );
-    expect(payload, hasLength(35));
+    expect(payload, hasLength(36));
   });
 
   test(
@@ -246,6 +250,7 @@ void main() {
           longitud: -73.2532,
           precisionGpsM: 8.4,
           ubicacionCapturadaAt: captureDate,
+          telefonoPaciente: '+57 (300) 123-4567',
           consentimientoDatos: true,
         ),
         result: const TriageResult(
@@ -269,10 +274,12 @@ void main() {
       final restored = AssessmentModel.fromMap(local).record;
 
       expect(local['consentimiento_datos'], 1);
+      expect(local['telefono_paciente'], '+57 (300) 123-4567');
       expect(local['ubicacion_capturada_at'], '2026-11-11T20:10:00.000Z');
       expect(local['consentimiento_at'], '2026-11-11T20:12:00.000Z');
       expect(payload['consentimiento_datos'], isTrue);
       expect(payload['nombre_paciente'], 'Paciente de prueba');
+      expect(payload['telefono_paciente'], '3001234567');
       expect(payload['direccion_paciente'], 'Barrio Centro');
       expect(payload['latitud'], 10.4631);
       expect(payload['longitud'], -73.2532);
@@ -280,6 +287,8 @@ void main() {
       expect(payload['ubicacion_capturada_at'], '2026-11-11T20:10:00.000Z');
       expect(payload['consentimiento_at'], '2026-11-11T20:12:00.000Z');
       expect(restored.patient.consentimientoDatos, isTrue);
+      expect(restored.patient.telefonoPaciente, '+57 (300) 123-4567');
+      expect(model.telefonoPaciente, '+57 (300) 123-4567');
       expect(restored.patient.nombrePaciente, 'Paciente de prueba');
       expect(restored.patient.latitud, 10.4631);
       expect(restored.consentimientoAt, DateTime.utc(2026, 11, 11, 20, 12));
@@ -317,6 +326,7 @@ void main() {
           longitud: -73.2532,
           precisionGpsM: 8.4,
           ubicacionCapturadaAt: date,
+          telefonoPaciente: '3001234567',
           consentimientoDatos: false,
         ),
         result: const TriageResult(
@@ -337,6 +347,7 @@ void main() {
 
       final local = AssessmentModel(record: record).toMap();
       expect(local['consentimiento_datos'], 0);
+      expect(local['telefono_paciente'], isNull);
       expect(local['nombre_paciente'], isNull);
       expect(local['direccion_paciente'], isNull);
       expect(local['latitud'], isNull);

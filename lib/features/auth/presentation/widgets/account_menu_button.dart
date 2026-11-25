@@ -27,6 +27,17 @@ class AccountMenuButton extends StatelessWidget {
     final authProvider = context.read<AuthProvider?>();
     final profile = authProvider?.profile;
     if (authProvider == null || profile == null) return;
+    if (profile.role == UserRole.monitor) {
+      try {
+        await authProvider.signOut();
+      } catch (error) {
+        if (!context.mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('No se pudo cerrar sesión: $error')),
+        );
+      }
+      return;
+    }
 
     int pendingCount = 0;
     final getUnsyncedCount = context.read<GetUnsyncedCountUseCase?>();

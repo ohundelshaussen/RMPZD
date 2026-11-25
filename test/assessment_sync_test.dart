@@ -75,7 +75,10 @@ void main() {
   });
 
   test('fromRemoteJson restores fields booleans dates and no local code', () {
-    final model = AssessmentModel.fromRemoteJson(_remoteAssessmentJson());
+    final model = AssessmentModel.fromRemoteJson({
+      ..._remoteAssessmentJson(),
+      'telefono_paciente': '3001234567',
+    });
 
     expect(model.record.uuid, 'remote-1');
     expect(model.record.ownerId, 'doctor-1');
@@ -84,6 +87,7 @@ void main() {
     expect(model.record.patient.antecedentePreeclampsia, isTrue);
     expect(model.record.patient.partoInstitucionalPrevio, isFalse);
     expect(model.record.patient.consentimientoDatos, isTrue);
+    expect(model.record.patient.telefonoPaciente, '3001234567');
     expect(model.record.fechaGuardado, DateTime.parse('2026-11-11T10:00:00Z'));
     expect(model.updatedAt, DateTime.parse('2026-11-12T10:00:00Z'));
   });
@@ -93,7 +97,7 @@ void main() {
     () async {
       final db = await databaseFactoryFfi.openDatabase(inMemoryDatabasePath);
       addTearDown(db.close);
-      await DatabaseHelper.createV6Schema(db);
+      await DatabaseHelper.createV7Schema(db);
       final local = AssessmentLocalDataSource(
         dbHelper: DatabaseHelper.forDatabase(db),
       );
@@ -129,7 +133,7 @@ void main() {
   test('successful regeneration updates the local consultation code', () async {
     final db = await databaseFactoryFfi.openDatabase(inMemoryDatabasePath);
     addTearDown(db.close);
-    await DatabaseHelper.createV6Schema(db);
+    await DatabaseHelper.createV7Schema(db);
     final local = AssessmentLocalDataSource(
       dbHelper: DatabaseHelper.forDatabase(db),
     );
@@ -328,6 +332,24 @@ void main() {
       columns.map((column) => column['name']),
       containsAll(['probabilidad_riesgo_medio', 'probabilidad_riesgo_bajo']),
     );
+  });
+
+  test('migrates version 6 with a nullable patient phone column', () async {
+    final db = await databaseFactoryFfi.openDatabase(inMemoryDatabasePath);
+    addTearDown(db.close);
+    await db.execute('CREATE TABLE assessments (id INTEGER PRIMARY KEY)');
+    await db.insert('assessments', {'id': 1});
+
+    await DatabaseHelper.migrateV6ToV7(db);
+
+    final columns = await db.rawQuery('PRAGMA table_info(assessments)');
+    final phoneColumn = columns.singleWhere(
+      (column) => column['name'] == 'telefono_paciente',
+    );
+    expect(phoneColumn['type'], 'TEXT');
+    expect(phoneColumn['notnull'], 0);
+    final rows = await db.query('assessments');
+    expect(rows.single['telefono_paciente'], isNull);
   });
 
   test('updates and deletes local assessments while preserving uuid', () async {
@@ -584,7 +606,7 @@ void main() {
     final preferences = await SharedPreferences.getInstance();
     final db = await databaseFactoryFfi.openDatabase(inMemoryDatabasePath);
     addTearDown(db.close);
-    await DatabaseHelper.createV6Schema(db);
+    await DatabaseHelper.createV7Schema(db);
     final local = AssessmentLocalDataSource(
       dbHelper: DatabaseHelper.forDatabase(db),
     );
@@ -747,8 +769,8 @@ _createLocalStore() async {
   final database = await databaseFactoryFfi.openDatabase(
     inMemoryDatabasePath,
     options: OpenDatabaseOptions(
-      version: 6,
-      onCreate: (db, version) => DatabaseHelper.createV6Schema(db),
+      version: 7,
+      onCreate: (db, version) => DatabaseHelper.createV7Schema(db),
     ),
   );
   final helper = DatabaseHelper.forDatabase(database);

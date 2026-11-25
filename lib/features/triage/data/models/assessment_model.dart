@@ -1,4 +1,5 @@
 import '../../../../core/constants/clinical_thresholds.dart';
+import '../../../../core/utils/phone_number.dart';
 import '../../domain/entities/assessment_record.dart';
 import '../../domain/entities/clinical_alert.dart';
 import '../../domain/entities/patient_assessment.dart';
@@ -14,6 +15,8 @@ class AssessmentModel {
     this.syncAttempts = 0,
     this.updatedAt,
   });
+
+  String? get telefonoPaciente => record.telefonoPaciente;
 
   Map<String, dynamic> toMap() {
     final patient = record.patient;
@@ -62,6 +65,7 @@ class AssessmentModel {
       'codigo_consulta': record.consultationCode?.replaceAll('-', ''),
       'nombre_paciente': hasConsent ? patient.nombrePaciente : null,
       'direccion_paciente': hasConsent ? patient.direccionPaciente : null,
+      'telefono_paciente': hasConsent ? patient.telefonoPaciente : null,
       'latitud': hasConsent ? patient.latitud : null,
       'longitud': hasConsent ? patient.longitud : null,
       'precision_gps_m': hasConsent ? patient.precisionGpsM : null,
@@ -113,6 +117,7 @@ class AssessmentModel {
       direccionPaciente: hasConsent
           ? map['direccion_paciente'] as String?
           : null,
+      telefonoPaciente: hasConsent ? map['telefono_paciente'] as String? : null,
       latitud: hasConsent ? (map['latitud'] as num?)?.toDouble() : null,
       longitud: hasConsent ? (map['longitud'] as num?)?.toDouble() : null,
       precisionGpsM: hasConsent
@@ -223,6 +228,9 @@ class AssessmentModel {
       'codigo_consulta': record.consultationCode?.replaceAll('-', ''),
       'nombre_paciente': hasConsent ? patient.nombrePaciente : null,
       'direccion_paciente': hasConsent ? patient.direccionPaciente : null,
+      'telefono_paciente': hasConsent && patient.telefonoPaciente != null
+          ? PhoneNumber.digitsForAssessment(patient.telefonoPaciente!)
+          : null,
       'latitud': hasConsent ? patient.latitud : null,
       'longitud': hasConsent ? patient.longitud : null,
       'precision_gps_m': hasConsent ? patient.precisionGpsM : null,
@@ -278,6 +286,9 @@ class AssessmentModel {
       fechaEvaluacion: fechaGuardado,
       nombrePaciente: map['nombre_paciente'] as String?,
       direccionPaciente: map['direccion_paciente'] as String?,
+      telefonoPaciente: (map['consentimiento_datos'] as int? ?? 0) == 1
+          ? map['telefono_paciente'] as String?
+          : null,
       latitud: (map['latitud'] as num?)?.toDouble(),
       longitud: (map['longitud'] as num?)?.toDouble(),
       precisionGpsM: (map['precision_gps_m'] as num?)?.toDouble(),

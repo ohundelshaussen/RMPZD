@@ -10,6 +10,7 @@ import '../../../../core/constants/input_limits.dart';
 import '../../../../core/sync/sync_provider.dart';
 import '../../../../core/utils/validators.dart';
 import '../../../../shared/widgets/consultation_code_badge.dart';
+import '../../../../shared/widgets/contact_phone_action.dart';
 import '../../../auth/presentation/widgets/account_menu_button.dart';
 import '../../../facilities/presentation/providers/facility_provider.dart';
 import '../../../facilities/presentation/providers/nearest_facilities_provider.dart';
@@ -935,6 +936,8 @@ class _HistoryPageState extends State<HistoryPage> {
               ),
               if (patient.direccionPaciente case final address?)
                 _KeyValueRow(label: 'Dirección', value: address),
+              if (record.telefonoPaciente case final phone?)
+                ContactPhoneAction(phone: phone),
               if (patient.latitud != null && patient.longitud != null)
                 _KeyValueRow(
                   label: 'Ubicación GPS',
@@ -1532,6 +1535,7 @@ class _HistoryPageState extends State<HistoryPage> {
       consentimientoDatos: consent,
       nombrePaciente: consent ? nameController.text.trim() : null,
       direccionPaciente: consent ? addressController.text.trim() : null,
+      telefonoPaciente: consent ? p.telefonoPaciente : null,
       latitud: consent ? p.latitud : null,
       longitud: consent ? p.longitud : null,
       precisionGpsM: consent ? p.precisionGpsM : null,

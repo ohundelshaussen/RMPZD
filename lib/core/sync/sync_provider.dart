@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/foundation.dart';
 
 import '../../features/auth/presentation/providers/auth_provider.dart';
+import '../../features/auth/domain/entities/user_profile.dart';
 import '../../features/triage/domain/usecases/get_unsynced_count_usecase.dart';
 import '../network/connectivity_service.dart';
 import 'sync_service.dart';
@@ -63,13 +64,18 @@ class SyncProvider extends ChangeNotifier {
 
   Future<void> syncNow() async {
     if (_disabled) return;
-    if (_isSyncing) return;
     final profile = authProvider!.profile;
     if (profile == null) {
       _pendingCount = 0;
       notifyListeners();
       return;
     }
+    if (profile.role == UserRole.monitor) {
+      _pendingCount = 0;
+      notifyListeners();
+      return;
+    }
+    if (_isSyncing) return;
 
     _isSyncing = true;
     notifyListeners();
@@ -116,7 +122,8 @@ class SyncProvider extends ChangeNotifier {
   }
 
   void _onAuthChanged() {
-    if (authProvider!.profile == null) {
+    final profile = authProvider!.profile;
+    if (profile == null || profile.role == UserRole.monitor) {
       _pendingCount = 0;
       _hasError = false;
       _lastMessage = null;
@@ -127,10 +134,14 @@ class SyncProvider extends ChangeNotifier {
   }
 
   Future<void> _refreshPendingAndSync() async {
+    if (authProvider!.isMonitor) return;
     final ownerId = authProvider!.profile?.id;
     if (ownerId == null) return;
     try {
       _pendingCount = await getUnsyncedCount!.execute(ownerId: ownerId);
+      if (authProvider!.isMonitor || authProvider!.profile?.id != ownerId) {
+        return;
+      }
       notifyListeners();
       await syncNow();
     } catch (error) {
@@ -142,6 +153,11 @@ class SyncProvider extends ChangeNotifier {
 
   Future<void> refreshPendingCount() async {
     if (_disabled) return;
+    if (authProvider?.isMonitor == true) {
+      _pendingCount = 0;
+      notifyListeners();
+      return;
+    }
     final ownerId = authProvider!.profile?.id;
     _pendingCount = ownerId == null
         ? 0

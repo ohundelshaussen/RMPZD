@@ -30,6 +30,10 @@ void main() {
     );
     await tester.enterText(nameField, 'A');
     await tester.enterText(addressField, 'Vereda Central');
+    await tester.enterText(
+      find.widgetWithText(TextFormField, 'Teléfono de contacto de la paciente'),
+      '3001234567',
+    );
     expect(formKey.currentState!.validate(), isFalse);
     await tester.pump();
     expect(find.text('Ingrese al menos 2 caracteres.'), findsOneWidget);
@@ -176,6 +180,10 @@ void main() {
       ),
       'Vereda Central',
     );
+    await tester.enterText(
+      find.widgetWithText(TextFormField, 'Teléfono de contacto de la paciente'),
+      '3001234567',
+    );
     await tester.tap(find.byType(Checkbox));
     await tester.pumpAndSettle();
 
@@ -198,6 +206,77 @@ void main() {
           .text,
       isEmpty,
     );
+    expect(
+      tester
+          .widget<TextFormField>(
+            find.widgetWithText(
+              TextFormField,
+              'Teléfono de contacto de la paciente',
+            ),
+          )
+          .controller!
+          .text,
+      isEmpty,
+    );
+  });
+
+  testWidgets('validates contact phone length and accepted formatting', (
+    tester,
+  ) async {
+    final formKey = GlobalKey<FormState>();
+    PatientIdentityData? latest;
+    await tester.pumpWidget(
+      _sectionApp(formKey: formKey, onChanged: (data) => latest = data),
+    );
+
+    final phoneField = find.widgetWithText(
+      TextFormField,
+      'Teléfono de contacto de la paciente',
+    );
+    final phoneWidget = tester.widget<TextFormField>(phoneField);
+    expect(phoneWidget.enabled, isFalse);
+    final phoneTextField = tester.widget<TextField>(
+      find.descendant(of: phoneField, matching: find.byType(TextField)),
+    );
+    expect(phoneTextField.keyboardType, TextInputType.phone);
+
+    await tester.tap(find.byType(Checkbox));
+    await tester.pumpAndSettle();
+    await tester.enterText(
+      find.widgetWithText(TextFormField, 'Nombre completo de la paciente'),
+      'Ana María',
+    );
+    await tester.enterText(
+      find.widgetWithText(
+        TextFormField,
+        'Dirección o descripción de la vivienda (vereda, corregimiento, barrio, referencias)',
+      ),
+      'Vereda Central',
+    );
+    expect(tester.widget<TextFormField>(phoneField).enabled, isTrue);
+
+    expect(formKey.currentState!.validate(), isFalse);
+    await tester.pump();
+    expect(
+      find.text('El teléfono de contacto es obligatorio.'),
+      findsOneWidget,
+    );
+
+    await tester.enterText(phoneField, '123-456');
+    expect(formKey.currentState!.validate(), isFalse);
+    await tester.pump();
+    expect(find.text('Ingrese entre 7 y 15 dígitos.'), findsOneWidget);
+
+    await tester.enterText(phoneField, '1234567890123456');
+    expect(formKey.currentState!.validate(), isFalse);
+
+    await tester.enterText(phoneField, '123 4567');
+    expect(formKey.currentState!.validate(), isTrue);
+    await tester.enterText(phoneField, '123456789012345');
+    expect(formKey.currentState!.validate(), isTrue);
+    await tester.enterText(phoneField, '+57 (300) 123-4567');
+    expect(formKey.currentState!.validate(), isTrue);
+    expect(latest?.telefonoPaciente, '+57 (300) 123-4567');
   });
 }
 

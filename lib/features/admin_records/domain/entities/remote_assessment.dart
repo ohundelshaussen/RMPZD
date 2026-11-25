@@ -57,6 +57,8 @@ class RemoteAssessment {
   String? get zone => _nonEmptyString(fields['zona']);
   String? get affiliation => _nonEmptyString(fields['afiliacion_sgsss']);
   String? get address => _nonEmptyString(fields['direccion_paciente']);
+  String? get telefonoPaciente =>
+      consentimientoDatos ? _nonEmptyString(fields['telefono_paciente']) : null;
   double? get latitude => _toDouble(fields['latitud']);
   double? get longitude => _toDouble(fields['longitud']);
   double? get gpsAccuracyM => _toDouble(fields['precision_gps_m']);

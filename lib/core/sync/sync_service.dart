@@ -29,6 +29,7 @@ class SyncService {
   final Future<bool> Function() hasInternet;
   final String? Function() currentOwnerId;
   final bool Function() hasSession;
+  final bool Function()? hasSyncRole;
   final bool Function()? hasPullRole;
   final PullOwnAssessmentsUseCase? pullOwnAssessments;
 
@@ -41,11 +42,15 @@ class SyncService {
     required this.hasInternet,
     required this.currentOwnerId,
     required this.hasSession,
+    this.hasSyncRole,
     this.hasPullRole,
     this.pullOwnAssessments,
   });
 
   Future<SyncResult> syncPending() async {
+    if (!(hasSyncRole?.call() ?? true)) {
+      return const SyncResult(enviados: 0, fallidos: 0, pendientes: 0);
+    }
     final ownerId = currentOwnerId();
     if (_isSyncing || !hasSession() || ownerId == null) {
       return SyncResult(

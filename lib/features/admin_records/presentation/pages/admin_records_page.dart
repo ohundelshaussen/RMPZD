@@ -9,6 +9,7 @@ import '../../../../core/constants/clinical_thresholds.dart';
 import '../../../../core/constants/colombia_locations.dart';
 import '../../../../core/constants/form_options.dart';
 import '../../../../shared/widgets/consultation_code_badge.dart';
+import '../../../../shared/widgets/contact_phone_action.dart';
 import '../../../admin_users/presentation/pages/admin_users_page.dart';
 import '../../../admin_users/presentation/providers/admin_users_provider.dart';
 import '../../../auth/presentation/widgets/account_menu_button.dart';
@@ -933,6 +934,8 @@ class _AdminRecordsPageState extends State<AdminRecordsPage> {
                 _detailField('Nombre', record.patientName),
               if (record.address != null)
                 _detailField('Dirección', record.address),
+              if (record.telefonoPaciente case final phone?)
+                ContactPhoneAction(phone: phone),
               _detailField(
                 'Territorio',
                 '${record.municipality ?? 'N/D'}, ${record.department ?? 'N/D'}',

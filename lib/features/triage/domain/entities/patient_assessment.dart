@@ -20,6 +20,7 @@ class PatientAssessment {
   final DateTime fechaEvaluacion;
   final String? nombrePaciente;
   final String? direccionPaciente;
+  final String? telefonoPaciente;
   final double? latitud;
   final double? longitud;
   final double? precisionGpsM;
@@ -48,6 +49,7 @@ class PatientAssessment {
     required this.fechaEvaluacion,
     this.nombrePaciente,
     this.direccionPaciente,
+    this.telefonoPaciente,
     this.latitud,
     this.longitud,
     this.precisionGpsM,

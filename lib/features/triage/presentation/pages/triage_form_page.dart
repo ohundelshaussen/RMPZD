@@ -86,6 +86,9 @@ class _TriageFormPageState extends State<TriageFormPage> {
       nombrePaciente: _identityData.consentimientoDatos
           ? _identityData.nombrePaciente
           : null,
+      telefonoPaciente: _identityData.consentimientoDatos
+          ? _identityData.telefonoPaciente
+          : null,
       direccionPaciente: _identityData.consentimientoDatos
           ? _identityData.direccionPaciente
           : null,

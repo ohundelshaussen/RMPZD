@@ -29,6 +29,7 @@ void main() {
         'id': 'user-1',
         'email': 'doctor@example.test',
         'full_name': 'Doctora Ejemplo',
+        'telefono': null,
         'role': 'doctor',
         'active': true,
       });
@@ -37,9 +38,34 @@ void main() {
         'id': 'user-1',
         'email': 'doctor@example.test',
         'full_name': 'Doctora Ejemplo',
+        'telefono': null,
         'role': 'doctor',
         'active': true,
       });
+    });
+
+    test('parses optional phone when present and tolerates null', () {
+      final withPhone = UserProfile.fromJson({
+        'id': 'user-1',
+        'email': 'doctor@example.test',
+        'role': 'doctor',
+        'telefono': '3001234567',
+      });
+      final withoutPhone = UserProfile.fromJson({
+        'id': 'user-2',
+        'email': 'doctor2@example.test',
+        'role': 'doctor',
+      });
+      final nullPhone = UserProfile.fromJson({
+        'id': 'user-3',
+        'email': 'doctor3@example.test',
+        'role': 'doctor',
+        'telefono': null,
+      });
+
+      expect(withPhone.telefono, '3001234567');
+      expect(withoutPhone.telefono, isNull);
+      expect(nullPhone.telefono, isNull);
     });
 
     test('rejects unknown roles', () {
@@ -53,6 +79,17 @@ void main() {
         }),
         throwsFormatException,
       );
+    });
+
+    test('accepts the monitor role', () {
+      final profile = UserProfile.fromJson({
+        'id': 'monitor-1',
+        'email': 'monitor@example.test',
+        'role': 'monitor',
+      });
+
+      expect(profile.role, UserRole.monitor);
+      expect(profile.role.label, 'Monitor');
     });
 
     test('accepts a null full_name and falls back to email for display', () {

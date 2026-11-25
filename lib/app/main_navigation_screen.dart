@@ -4,6 +4,7 @@ import '../features/auth/domain/entities/user_profile.dart';
 import '../features/admin_records/presentation/pages/admin_records_page.dart';
 import '../features/dashboard/presentation/pages/admin_dashboard_page.dart';
 import '../features/history/presentation/pages/history_page.dart';
+import '../features/monitoring/presentation/pages/monitor_home_page.dart';
 import '../features/triage/presentation/pages/triage_form_page.dart';
 
 class MainNavigationScreen extends StatefulWidget {
@@ -50,6 +51,10 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
 
   @override
   Widget build(BuildContext context) {
+    if (widget.profile.role == UserRole.monitor) {
+      return const MonitorHomePage();
+    }
+
     final tabs = _tabs;
     return Scaffold(
       body: IndexedStack(

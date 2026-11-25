@@ -39,6 +39,9 @@ import 'package:rmpzd/features/facilities/presentation/providers/facility_provid
 import 'package:rmpzd/features/facilities/presentation/providers/nearest_facilities_provider.dart';
 import 'package:rmpzd/features/facilities/presentation/services/facility_link_launcher.dart';
 import 'package:rmpzd/features/history/presentation/providers/history_provider.dart';
+import 'package:rmpzd/features/monitoring/data/datasources/case_remote_data_source.dart';
+import 'package:rmpzd/features/monitoring/data/services/monitoring_notification_service.dart';
+import 'package:rmpzd/features/monitoring/presentation/providers/monitoring_provider.dart';
 import 'package:rmpzd/features/patient_portal/data/datasources/patient_portal_remote_data_source.dart';
 import 'package:rmpzd/features/patient_portal/domain/usecases/lookup_patient_records_usecase.dart';
 import 'package:rmpzd/features/patient_portal/presentation/providers/patient_portal_provider.dart';
@@ -110,6 +113,9 @@ void main() {
                 context.read<GetFacilityCatalogStatusUseCase>(),
                 context.read<GetNearestFacilitiesUseCase>(),
                 context.read<FacilityProvider>(),
+                context.read<CaseRemoteDataSource>(),
+                context.read<MonitoringNotificationService>(),
+                context.read<MonitoringProvider>(),
                 context.read<NearestFacilitiesProvider>(),
                 context.read<FacilityLinkLauncher>(),
                 context.read<AssessmentLocalDataSource>(),
@@ -131,7 +137,7 @@ void main() {
                 context.read<SyncProvider>(),
                 context.read<TriageProvider>(),
               ];
-              expect(providers, hasLength(55));
+              expect(providers, hasLength(58));
               return const SizedBox();
             },
           ),

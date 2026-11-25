@@ -112,7 +112,7 @@ class SupabaseAssessmentRemoteDataSource implements AssessmentRemoteDataSource {
         'fecha_evaluacion, nivel_riesgo_predicho, probabilidad_riesgo_alto, '
         'alerta_clinica_inmediata, descripcion_alerta, '
         'probabilidad_desenlace_adverso, nombre_paciente, direccion_paciente, '
-        'latitud, longitud, precision_gps_m, ubicacion_capturada_at, '
+        'telefono_paciente, latitud, longitud, precision_gps_m, ubicacion_capturada_at, '
         'consentimiento_datos, consentimiento_at, created_at, updated_at';
     var query = supabase
         .from('assessments')

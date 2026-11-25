@@ -17,6 +17,7 @@ class NearestFacilitiesSection extends StatefulWidget {
   final String? municipality;
   final bool highRisk;
   final bool initiallyExpanded;
+  final ValueChanged<HealthFacility>? onRefer;
 
   const NearestFacilitiesSection({
     required this.latitude,
@@ -25,6 +26,7 @@ class NearestFacilitiesSection extends StatefulWidget {
     required this.municipality,
     this.highRisk = false,
     this.initiallyExpanded = true,
+    this.onRefer,
     super.key,
   });
 
@@ -141,6 +143,7 @@ class _NearestFacilitiesSectionState extends State<NearestFacilitiesSection> {
           isOnline: isOnline,
           catalogAvailable: provider.catalogAvailable,
           launcher: launcher,
+          onRefer: widget.onRefer,
         ),
       ),
     );
@@ -246,6 +249,7 @@ class _NearestFacilitiesSectionState extends State<NearestFacilitiesSection> {
                           hasAssessmentLocation: _hasLocation,
                           assessmentLatitude: _effectiveLatitude,
                           assessmentLongitude: _effectiveLongitude,
+                          onRefer: widget.onRefer,
                         ),
                       if (provider.catalogAvailable && !_hasLocation) ...[
                         const SizedBox(height: 8),

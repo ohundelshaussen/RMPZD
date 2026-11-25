@@ -8,7 +8,7 @@ class AuthSessionChange {
 }
 
 class AuthRemoteDataSource {
-  static const _profileColumns = 'id,email,full_name,role,active';
+  static const _profileColumns = 'id,email,full_name,telefono,role,active';
 
   final SupabaseClient? client;
   final NetworkStatusDataSource networkStatus;

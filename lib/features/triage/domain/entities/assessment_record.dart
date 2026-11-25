@@ -28,5 +28,7 @@ class AssessmentRecord {
     required this.fechaGuardado,
   });
 
+  String? get telefonoPaciente => patient.telefonoPaciente;
+
   bool get isSynced => syncStatus == SyncStatus.synced;
 }
