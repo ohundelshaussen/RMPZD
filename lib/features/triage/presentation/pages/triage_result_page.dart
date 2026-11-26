@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../../../core/constants/app_colors.dart';
 import '../../../history/presentation/providers/history_provider.dart';
+import '../../../monitoring/presentation/widgets/doctor_referral_panel.dart';
 import '../../../facilities/presentation/widgets/risk_facilities_recommendations.dart';
 import '../providers/triage_provider.dart';
 import '../widgets/ai_probability_card.dart';
@@ -9,6 +10,7 @@ import '../widgets/clinical_alert_section.dart';
 import '../widgets/consultation_code_card.dart';
 import '../../domain/usecases/regenerate_consultation_code_usecase.dart';
 import '../widgets/result_status_card.dart';
+import '../../domain/entities/triage_result.dart';
 
 class TriageResultPage extends StatelessWidget {
   const TriageResultPage({super.key});
@@ -45,6 +47,20 @@ class TriageResultPage extends StatelessWidget {
               children: [
                 ResultStatusCard(patient: patient, result: result),
                 const SizedBox(height: 16),
+                if (result.riskLevel == RiskLevel.medio)
+                  provider.savedAssessment == null
+                      ? const DoctorReferralPendingPanel()
+                      : DoctorReferralPanel(record: provider.savedAssessment!),
+                if (result.riskLevel == RiskLevel.alto)
+                  provider.savedAssessment == null
+                      ? const DoctorReferralPendingPanel(automaticAlert: true)
+                      : DoctorReferralPanel(
+                          record: provider.savedAssessment!,
+                          automaticAlert: true,
+                        ),
+                if (result.riskLevel == RiskLevel.medio ||
+                    result.riskLevel == RiskLevel.alto)
+                  const SizedBox(height: 16),
                 if (result.clinicalAlerts.isNotEmpty)
                   ClinicalAlertSection(alerts: result.clinicalAlerts),
                 AiProbabilityCard(result: result),

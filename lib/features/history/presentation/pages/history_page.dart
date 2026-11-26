@@ -15,6 +15,7 @@ import '../../../auth/presentation/widgets/account_menu_button.dart';
 import '../../../facilities/presentation/providers/facility_provider.dart';
 import '../../../facilities/presentation/providers/nearest_facilities_provider.dart';
 import '../../../facilities/presentation/widgets/nearest_facilities_section.dart';
+import '../../../monitoring/presentation/widgets/doctor_referral_panel.dart';
 import '../../../triage/domain/entities/assessment_record.dart';
 import '../../../triage/domain/entities/patient_assessment.dart';
 import '../../../triage/presentation/widgets/consultation_code_card.dart';
@@ -651,6 +652,7 @@ class _HistoryPageState extends State<HistoryPage> {
                               ),
                             ),
                           ],
+                          DoctorReferralPanel(record: record, compact: true),
                         ],
                       ),
                     ),
@@ -947,6 +949,7 @@ class _HistoryPageState extends State<HistoryPage> {
                       '${patient.precisionGpsM == null ? '' : ' (±${patient.precisionGpsM!.toStringAsFixed(1)} m)'}',
                 ),
               _KeyValueRow(label: 'Sincronización', value: syncLabel),
+              DoctorReferralPanel(record: record),
               if (hasFacilities) ...[
                 const SizedBox(height: 12),
                 OutlinedButton.icon(

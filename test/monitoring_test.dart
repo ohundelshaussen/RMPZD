@@ -13,6 +13,7 @@ import 'package:rmpzd/features/monitoring/data/datasources/case_remote_data_sour
 import 'package:rmpzd/features/monitoring/data/services/monitoring_notification_service.dart';
 import 'package:rmpzd/features/monitoring/domain/entities/monitoring_case.dart';
 import 'package:rmpzd/features/monitoring/presentation/pages/monitor_home_page.dart';
+import 'package:rmpzd/features/monitoring/presentation/pages/monitoring_case_detail_page.dart';
 import 'package:rmpzd/features/monitoring/presentation/providers/monitoring_provider.dart';
 
 void main() {
@@ -38,6 +39,10 @@ void main() {
           },
         ],
         'cerrado_en': 'invalid date',
+        'origen': 'remision_doctor',
+        'remitido_por': 'doctor-1',
+        'motivo_remision': 'Consulta prioritaria',
+        'profiles': {'full_name': 'Doctora Ejemplo'},
       });
 
       expect(item.id, 'case-1');
@@ -48,6 +53,9 @@ void main() {
       expect(item.gestationWeeks, 28);
       expect(item.maternalAge, 24);
       expect(item.closedAt, isNull);
+      expect(item.origin, 'remision_doctor');
+      expect(item.referredByName, 'Doctora Ejemplo');
+      expect(item.referralReason, 'Consulta prioritaria');
     });
 
     test('uses safe defaults for missing or unknown optional values', () {
@@ -67,6 +75,28 @@ void main() {
   });
 
   group('MonitoringProvider', () {
+    test('successful actions refresh monitoring lists', () async {
+      final fixture = await _startMonitoring([_case('case-1')]);
+      addTearDown(fixture.dispose);
+      final initialRefreshes = fixture.source.countRequests;
+
+      await fixture.provider.takeCase('case-1');
+      await fixture.provider.releaseCase('case-1');
+      await fixture.provider.registerEvent(
+        caseId: 'case-1',
+        type: 'llamada_paciente',
+      );
+      await fixture.provider.closeCase(caseId: 'case-1', result: 'atendida');
+
+      expect(fixture.source.actionCalls, [
+        'tomar_caso',
+        'liberar_caso',
+        'registrar_evento_caso',
+        'cerrar_caso',
+      ]);
+      expect(fixture.source.countRequests, initialRefreshes + 4);
+    });
+
     test('orders critical first, then oldest, with deduplicated ids', () async {
       final fixture = await _startMonitoring([
         _case('high-old', priority: MonitoringPriority.alta),
@@ -81,6 +111,7 @@ void main() {
           createdAt: DateTime.utc(2026, 11, 25, 9),
         ),
         _case('high-old'),
+        _case('medium-old', priority: MonitoringPriority.media),
       ]);
       addTearDown(fixture.dispose);
 
@@ -88,6 +119,7 @@ void main() {
         'critical-old',
         'critical-new',
         'high-old',
+        'medium-old',
       ]);
     });
 
@@ -161,6 +193,47 @@ void main() {
       },
     );
 
+    test('UPDATE to New alerts once per case for a doctor referral', () async {
+      final fixture = await _startMonitoring([
+        _case('case-1', status: MonitoringCaseStatus.enGestion),
+      ]);
+      addTearDown(fixture.dispose);
+      final alerts = <MonitoringAlert>[];
+      final subscription = fixture.provider.alerts.listen(alerts.add);
+      addTearDown(subscription.cancel);
+      final reopened = _case(
+        'case-1',
+        status: MonitoringCaseStatus.nuevo,
+        priority: MonitoringPriority.media,
+        origin: 'remision_doctor',
+        patientName: 'No debe notificarse este nombre',
+        patientId: 'NO-DEBE-NOTIFICARSE',
+      );
+
+      fixture.source.upsert(reopened);
+      final change = MonitoringCaseChange(
+        type: MonitoringChangeType.update,
+        caseId: reopened.id,
+        current: reopened,
+        previousState: MonitoringCaseStatus.enGestion.value,
+      );
+      fixture.source.emit(change);
+      fixture.source.emit(change);
+      await _waitUntil(
+        () =>
+            fixture.notifications.shown.length == 1 &&
+            alerts.length == 1 &&
+            !fixture.provider.isLoading,
+      );
+
+      expect(
+        alerts.single.notificationText,
+        'Paciente remitida por el doctor · Valledupar, Cesar',
+      );
+      expect(alerts.single.notificationText, isNot(contains('NO-DEBE')));
+      expect(fixture.notifications.shown, hasLength(1));
+    });
+
     testWidgets('reconnect and app resume refresh lists; logout unsubscribes', (
       tester,
     ) async {
@@ -211,7 +284,8 @@ void main() {
       expect(find.text('Nueva alerta crítica · Ver caso'), findsOneWidget);
       await tester.tap(find.text('Nueva alerta crítica · Ver caso'));
       await tester.pumpAndSettle();
-      expect(find.text('Caso: banner-case'), findsOneWidget);
+      expect(find.text('Prioridad crítica'), findsOneWidget);
+      expect(find.text('Valledupar, Cesar'), findsOneWidget);
     });
   });
 
@@ -245,6 +319,56 @@ void main() {
     expect(find.text('Hace 10 min'), findsOneWidget);
     expect(find.text('Sin atender'), findsOneWidget);
     expect(find.text('Prioridad crítica'), findsOneWidget);
+  });
+
+  testWidgets(
+    'medium-priority card identifies a doctor referral by text/icon',
+    (tester) async {
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: MonitoringCaseCard(
+              item: _case(
+                'doctor-referral',
+                priority: MonitoringPriority.media,
+                origin: 'remision_doctor',
+              ),
+              isNewCase: true,
+            ),
+          ),
+        ),
+      );
+
+      expect(find.text('Remitido por el doctor'), findsOneWidget);
+      expect(find.byIcon(Icons.forward_to_inbox_outlined), findsOneWidget);
+    },
+  );
+
+  testWidgets('monitor detail displays doctor and referral reason', (
+    tester,
+  ) async {
+    final fixture = await _startMonitoring([
+      _case(
+        'doctor-case',
+        priority: MonitoringPriority.media,
+        origin: 'remision_doctor',
+        referredByName: 'Doctora Ejemplo',
+        referralReason: 'Consulta prioritaria',
+      ),
+    ]);
+    addTearDown(fixture.dispose);
+
+    await tester.pumpWidget(
+      _providerApp(
+        fixture,
+        const MonitoringCaseDetailPage(caseId: 'doctor-case'),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('Remitido por el doctor'), findsOneWidget);
+    expect(find.text('Doctora Ejemplo'), findsOneWidget);
+    expect(find.text('Consulta prioritaria'), findsOneWidget);
   });
 }
 
@@ -308,6 +432,9 @@ MonitoringCase _case(
   String id, {
   MonitoringCaseStatus status = MonitoringCaseStatus.nuevo,
   MonitoringPriority priority = MonitoringPriority.alta,
+  String? origin,
+  String? referredByName,
+  String? referralReason,
   String? assignedTo,
   String? patientName = 'Paciente Ejemplo',
   String? patientId = 'PAT-123',
@@ -323,6 +450,9 @@ MonitoringCase _case(
   department: 'Cesar',
   riskLevel: 'alto',
   alertDescription: 'Alerta de prueba',
+  origin: origin,
+  referredByName: referredByName,
+  referralReason: referralReason,
   patientId: patientId,
   patientName: patientName,
   gestationWeeks: 28,
@@ -361,12 +491,42 @@ class _FakeCaseRemoteDataSource implements CaseRemoteDataSource {
   final Completer<void> started = Completer<void>();
   int countRequests = 0;
   int stopCalls = 0;
+  final List<String> actionCalls = [];
   void Function(bool)? _connectionListener;
 
   _FakeCaseRemoteDataSource(List<MonitoringCase> cases) : _cases = [...cases];
 
   @override
   Stream<MonitoringCaseChange> get changes => _changes.stream;
+
+  @override
+  Future<void> takeCase(String caseId) async {
+    actionCalls.add('tomar_caso');
+  }
+
+  @override
+  Future<void> releaseCase(String caseId) async {
+    actionCalls.add('liberar_caso');
+  }
+
+  @override
+  Future<void> registerEvent({
+    required String caseId,
+    required String type,
+    String? note,
+    String? centerId,
+  }) async {
+    actionCalls.add('registrar_evento_caso');
+  }
+
+  @override
+  Future<void> closeCase({
+    required String caseId,
+    required String result,
+    String? note,
+  }) async {
+    actionCalls.add('cerrar_caso');
+  }
 
   @override
   Future<List<MonitoringCase>> fetchCases({
@@ -383,6 +543,14 @@ class _FakeCaseRemoteDataSource implements CaseRemoteDataSource {
       return true;
     }).toList();
     return filtered.skip(offset).take(limit).toList();
+  }
+
+  @override
+  Future<MonitoringCase?> fetchCaseById(String caseId) async {
+    for (final item in _cases) {
+      if (item.id == caseId) return item;
+    }
+    return null;
   }
 
   @override

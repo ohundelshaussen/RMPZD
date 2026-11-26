@@ -40,8 +40,12 @@ import 'package:rmpzd/features/facilities/presentation/providers/nearest_facilit
 import 'package:rmpzd/features/facilities/presentation/services/facility_link_launcher.dart';
 import 'package:rmpzd/features/history/presentation/providers/history_provider.dart';
 import 'package:rmpzd/features/monitoring/data/datasources/case_remote_data_source.dart';
+import 'package:rmpzd/features/monitoring/data/datasources/doctor_monitoring_remote_data_source.dart';
 import 'package:rmpzd/features/monitoring/data/services/monitoring_notification_service.dart';
+import 'package:rmpzd/features/monitoring/domain/usecases/get_doctor_monitoring_cases_usecase.dart';
+import 'package:rmpzd/features/monitoring/domain/usecases/refer_assessment_to_monitor_usecase.dart';
 import 'package:rmpzd/features/monitoring/presentation/providers/monitoring_provider.dart';
+import 'package:rmpzd/features/monitoring/presentation/providers/doctor_referral_provider.dart';
 import 'package:rmpzd/features/patient_portal/data/datasources/patient_portal_remote_data_source.dart';
 import 'package:rmpzd/features/patient_portal/domain/usecases/lookup_patient_records_usecase.dart';
 import 'package:rmpzd/features/patient_portal/presentation/providers/patient_portal_provider.dart';
@@ -114,6 +118,10 @@ void main() {
                 context.read<GetNearestFacilitiesUseCase>(),
                 context.read<FacilityProvider>(),
                 context.read<CaseRemoteDataSource>(),
+                context.read<DoctorMonitoringRemoteDataSource>(),
+                context.read<GetDoctorMonitoringCasesUseCase>(),
+                context.read<ReferAssessmentToMonitorUseCase>(),
+                context.read<DoctorReferralProvider>(),
                 context.read<MonitoringNotificationService>(),
                 context.read<MonitoringProvider>(),
                 context.read<NearestFacilitiesProvider>(),
@@ -137,7 +145,7 @@ void main() {
                 context.read<SyncProvider>(),
                 context.read<TriageProvider>(),
               ];
-              expect(providers, hasLength(58));
+              expect(providers, hasLength(62));
               return const SizedBox();
             },
           ),

@@ -49,8 +49,12 @@ import '../features/facilities/presentation/providers/nearest_facilities_provide
 import '../features/facilities/presentation/services/facility_link_launcher.dart';
 import '../features/history/presentation/providers/history_provider.dart';
 import '../features/monitoring/data/datasources/case_remote_data_source.dart';
+import '../features/monitoring/data/datasources/doctor_monitoring_remote_data_source.dart';
+import '../features/monitoring/domain/usecases/get_doctor_monitoring_cases_usecase.dart';
+import '../features/monitoring/domain/usecases/refer_assessment_to_monitor_usecase.dart';
 import '../features/monitoring/data/services/local_monitoring_notification_service.dart';
 import '../features/monitoring/data/services/monitoring_notification_service.dart';
+import '../features/monitoring/presentation/providers/doctor_referral_provider.dart';
 import '../features/monitoring/presentation/providers/monitoring_provider.dart';
 import '../features/patient_portal/data/datasources/patient_portal_remote_data_source.dart';
 import '../features/patient_portal/domain/usecases/lookup_patient_records_usecase.dart';
@@ -241,6 +245,32 @@ List<SingleChildWidget> createAppProviders({
     Provider<CaseRemoteDataSource>(
       create: (_) => SupabaseCaseRemoteDataSource(client: supabaseClient),
     ),
+    Provider<DoctorMonitoringRemoteDataSource>(
+      create: (_) =>
+          SupabaseDoctorMonitoringRemoteDataSource(client: supabaseClient),
+    ),
+    Provider<GetDoctorMonitoringCasesUseCase>(
+      create: (context) => GetDoctorMonitoringCasesUseCase(
+        context.read<DoctorMonitoringRemoteDataSource>(),
+      ),
+    ),
+    Provider<ReferAssessmentToMonitorUseCase>(
+      create: (context) => ReferAssessmentToMonitorUseCase(
+        context.read<DoctorMonitoringRemoteDataSource>(),
+      ),
+    ),
+    ChangeNotifierProvider<DoctorReferralProvider>(
+      create: (context) => DoctorReferralProvider(
+        getMonitoringCases: context.read<GetDoctorMonitoringCasesUseCase>(),
+        referAssessment: context.read<ReferAssessmentToMonitorUseCase>(),
+        checkInternet: supabaseClient == null
+            ? () async => false
+            : context.read<ConnectivityService>().hasInternet,
+        connectionChanges: context
+            .read<ConnectivityService>()
+            .connectionChanges,
+      ),
+    ),
     Provider<MonitoringNotificationService>(
       create: (_) => LocalMonitoringNotificationService(),
     ),
@@ -348,6 +378,13 @@ List<SingleChildWidget> createAppProviders({
         updateAssessment: context.read<UpdateAssessmentUseCase>(),
         deleteAssessment: context.read<DeleteAssessmentUseCase>(),
         remoteDataSource: context.read<AssessmentRemoteDataSource>(),
+        onHistoryLoaded: (records) =>
+            context.read<DoctorReferralProvider>().loadStatuses(
+              records
+                  .where((record) => record.isSynced)
+                  .map((record) => record.uuid),
+              force: true,
+            ),
         onHistoryMutated: () =>
             context.read<SyncProvider>().refreshPendingCount(),
       ),

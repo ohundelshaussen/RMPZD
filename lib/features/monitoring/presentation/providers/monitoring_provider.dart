@@ -16,6 +16,8 @@ class MonitoringProvider extends ChangeNotifier with WidgetsBindingObserver {
   final AuthProvider authProvider;
   final Future<void> Function() syncFacilityCatalog;
 
+  final Map<String, MonitoringCase> _caseDetails = {};
+
   List<MonitoringCase> _newCases = const [];
   List<MonitoringCase> get newCases => _newCases;
 
@@ -95,6 +97,64 @@ class MonitoringProvider extends ChangeNotifier with WidgetsBindingObserver {
         MonitoringCaseStatus.enGestion => _myCases,
         MonitoringCaseStatus.cerrado => _closedCases,
       };
+
+  MonitoringCase? caseById(String caseId) {
+    final detail = _caseDetails[caseId];
+    if (detail != null) return detail;
+    for (final item in [..._newCases, ..._myCases, ..._closedCases]) {
+      if (item.id == caseId) return item;
+    }
+    return null;
+  }
+
+  Future<MonitoringCase?> refreshCase(String caseId) async {
+    final item = await caseRemoteDataSource.fetchCaseById(caseId);
+    if (item == null) {
+      _caseDetails.remove(caseId);
+    } else {
+      _caseDetails[caseId] = item;
+    }
+    notifyListeners();
+    return item;
+  }
+
+  Future<void> takeCase(String caseId) async {
+    await caseRemoteDataSource.takeCase(caseId);
+    await refreshLists();
+  }
+
+  Future<void> releaseCase(String caseId) async {
+    await caseRemoteDataSource.releaseCase(caseId);
+    await refreshLists();
+  }
+
+  Future<void> registerEvent({
+    required String caseId,
+    required String type,
+    String? note,
+    String? centerId,
+  }) async {
+    await caseRemoteDataSource.registerEvent(
+      caseId: caseId,
+      type: type,
+      note: note,
+      centerId: centerId,
+    );
+    await refreshLists();
+  }
+
+  Future<void> closeCase({
+    required String caseId,
+    required String result,
+    String? note,
+  }) async {
+    await caseRemoteDataSource.closeCase(
+      caseId: caseId,
+      result: result,
+      note: note,
+    );
+    await refreshLists();
+  }
 
   Future<void> refreshLists() async {
     if (!_active || _activeMonitorId == null) return;
@@ -262,6 +322,7 @@ class MonitoringProvider extends ChangeNotifier with WidgetsBindingObserver {
     _newCases = const [];
     _myCases = const [];
     _closedCases = const [];
+    _caseDetails.clear();
     _newCasesCount = 0;
     _isLoading = false;
     _newCasesHaveMore = false;
@@ -293,8 +354,13 @@ class MonitoringProvider extends ChangeNotifier with WidgetsBindingObserver {
 
   void _onCaseChanged(MonitoringCaseChange change) {
     if (!_active) return;
+    _caseDetails.remove(change.caseId);
     final item = change.current;
-    if (change.type == MonitoringChangeType.insert &&
+    final becameNew =
+        change.type == MonitoringChangeType.update &&
+        change.previousState != MonitoringCaseStatus.nuevo.value &&
+        item?.status == MonitoringCaseStatus.nuevo;
+    if ((change.type == MonitoringChangeType.insert || becameNew) &&
         item != null &&
         _alertedCaseIds.add(change.caseId)) {
       final alert = MonitoringAlert.fromCase(item);

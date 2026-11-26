@@ -16,14 +16,18 @@ enum MonitoringCaseStatus {
 
 enum MonitoringPriority {
   critica('critica'),
-  alta('alta');
+  alta('alta'),
+  media('media');
 
   const MonitoringPriority(this.value);
 
   final String value;
 
-  static MonitoringPriority parse(Object? value) =>
-      value == 'critica' ? MonitoringPriority.critica : MonitoringPriority.alta;
+  static MonitoringPriority parse(Object? value) => switch (value) {
+    'critica' => MonitoringPriority.critica,
+    'media' => MonitoringPriority.media,
+    _ => MonitoringPriority.alta,
+  };
 }
 
 class MonitoringCase {
@@ -44,6 +48,9 @@ class MonitoringCase {
   final DateTime? closedAt;
   final String? closedBy;
   final String? result;
+  final String? origin;
+  final String? referredByName;
+  final String? referralReason;
 
   const MonitoringCase({
     required this.id,
@@ -63,10 +70,14 @@ class MonitoringCase {
     this.closedAt,
     this.closedBy,
     this.result,
+    this.origin,
+    this.referredByName,
+    this.referralReason,
   });
 
   factory MonitoringCase.fromJson(Map<String, dynamic> json) {
     final assessment = _embeddedAssessment(json['assessments']);
+    final referrer = _embeddedProfile(json['profiles']);
     return MonitoringCase(
       id: _string(json['id']) ?? '',
       assessmentId: _string(json['assessment_id']) ?? '',
@@ -87,10 +98,21 @@ class MonitoringCase {
       closedAt: DateTime.tryParse(_string(json['cerrado_en']) ?? ''),
       closedBy: _string(json['cerrado_por']),
       result: _string(json['resultado']),
+      origin: _string(json['origen']),
+      referredByName: _string(referrer?['full_name']),
+      referralReason: _string(json['motivo_remision']),
     );
   }
 
   static Map<String, dynamic>? _embeddedAssessment(Object? value) {
+    if (value is Map<String, dynamic>) return value;
+    if (value is List && value.isNotEmpty && value.first is Map) {
+      return Map<String, dynamic>.from(value.first as Map);
+    }
+    return null;
+  }
+
+  static Map<String, dynamic>? _embeddedProfile(Object? value) {
     if (value is Map<String, dynamic>) return value;
     if (value is List && value.isNotEmpty && value.first is Map) {
       return Map<String, dynamic>.from(value.first as Map);
@@ -114,11 +136,13 @@ class MonitoringCaseChange {
   final MonitoringChangeType type;
   final MonitoringCase? current;
   final String caseId;
+  final String? previousState;
 
   const MonitoringCaseChange({
     required this.type,
     required this.caseId,
     this.current,
+    this.previousState,
   });
 }
 
@@ -127,12 +151,14 @@ class MonitoringAlert {
   final MonitoringPriority priority;
   final String? municipality;
   final String? department;
+  final String? origin;
 
   const MonitoringAlert({
     required this.caseId,
     required this.priority,
     this.municipality,
     this.department,
+    this.origin,
   });
 
   factory MonitoringAlert.fromCase(MonitoringCase item) => MonitoringAlert(
@@ -140,16 +166,21 @@ class MonitoringAlert {
     priority: item.priority,
     municipality: item.municipality,
     department: item.department,
+    origin: item.origin,
   );
 
-  String get title => priority == MonitoringPriority.critica
-      ? 'Alerta crítica'
-      : 'Alerta de alto riesgo';
+  String get title => switch (priority) {
+    MonitoringPriority.critica => 'Alerta crítica',
+    MonitoringPriority.alta => 'Alerta de alto riesgo',
+    MonitoringPriority.media => 'Remisión del doctor',
+  };
 
   String get location => [
     municipality ?? 'Municipio no disponible',
     department ?? 'Departamento no disponible',
   ].join(', ');
 
-  String get notificationText => '$title · $location';
+  String get notificationText => origin == 'remision_doctor'
+      ? 'Paciente remitida por el doctor · $location'
+      : '$title · $location';
 }

@@ -325,7 +325,11 @@ class _MonitoringCaseCardState extends State<MonitoringCaseCard> {
     final unattended =
         widget.isNewCase && elapsed >= const Duration(minutes: 10);
     final colorScheme = Theme.of(context).colorScheme;
-    final priorityColor = critical ? colorScheme.error : Colors.deepOrange;
+    final priorityColor = switch (item.priority) {
+      MonitoringPriority.critica => colorScheme.error,
+      MonitoringPriority.alta => Colors.deepOrange,
+      MonitoringPriority.media => colorScheme.primary,
+    };
     final location = [
       item.municipality ?? 'Municipio sin registrar',
       item.department ?? 'Departamento sin registrar',
@@ -356,12 +360,24 @@ class _MonitoringCaseCardState extends State<MonitoringCaseCard> {
                     size: 22,
                   ),
                   Text(
-                    critical ? 'Prioridad crítica' : 'Alto riesgo',
+                    switch (item.priority) {
+                      MonitoringPriority.critica => 'Prioridad crítica',
+                      MonitoringPriority.alta => 'Alto riesgo',
+                      MonitoringPriority.media => 'Riesgo medio',
+                    },
                     style: TextStyle(
                       color: priorityColor,
                       fontWeight: FontWeight.w700,
                     ),
                   ),
+                  if (item.priority == MonitoringPriority.media)
+                    Chip(
+                      avatar: const Icon(
+                        Icons.forward_to_inbox_outlined,
+                        size: 17,
+                      ),
+                      label: const Text('Remitido por el doctor'),
+                    ),
                   if (unattended)
                     Chip(
                       avatar: Icon(
@@ -377,6 +393,18 @@ class _MonitoringCaseCardState extends State<MonitoringCaseCard> {
               ),
               const SizedBox(height: 8),
               Text(location, style: Theme.of(context).textTheme.titleMedium),
+              if (item.origin == 'remision_doctor') ...[
+                const SizedBox(height: 4),
+                Text(
+                  'Origen: Remisión del doctor'
+                  '${item.referredByName == null ? '' : ' · ${item.referredByName}'}',
+                ),
+                if (item.referralReason != null)
+                  Text('Motivo: ${item.referralReason}'),
+              ] else if (item.origin == 'automatico') ...[
+                const SizedBox(height: 4),
+                const Text('Origen: Alerta automática'),
+              ],
               const SizedBox(height: 4),
               Text(
                 patient.isEmpty

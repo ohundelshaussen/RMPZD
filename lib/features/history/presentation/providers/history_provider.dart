@@ -20,6 +20,7 @@ class HistoryProvider extends ChangeNotifier {
   final DeleteAssessmentUseCase? deleteAssessment;
   final AssessmentRemoteDataSource? remoteDataSource;
   final Future<void> Function()? onHistoryMutated;
+  final Future<void> Function(List<AssessmentRecord> records)? onHistoryLoaded;
 
   HistoryProvider({
     required this._getAssessmentHistory,
@@ -30,6 +31,7 @@ class HistoryProvider extends ChangeNotifier {
     this.deleteAssessment,
     this.remoteDataSource,
     this.onHistoryMutated,
+    this.onHistoryLoaded,
   });
 
   List<AssessmentRecord> _history = [];
@@ -134,6 +136,8 @@ class HistoryProvider extends ChangeNotifier {
       }
       _history = await _getAssessmentHistory.execute(ownerId: ownerId);
       _unsyncedCount = await _getUnsyncedCount.execute(ownerId: ownerId);
+      final callback = onHistoryLoaded;
+      if (callback != null) await callback(_history);
       _errorMessage = null;
       notifyListeners();
     } catch (error) {
